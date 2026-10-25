@@ -29,7 +29,12 @@ type Entry = {
   id: string; at: string; heard?: string; reply?: string;
   item?: Pick<Item, "title" | "summary" | "category" | "location" | "urgency" | "managerDecides"> | null;
   action?: string; error?: string; pending?: boolean;
+  /** Which transcription engine won, and what the other one heard. */
+  engine?: Engine; alt?: { engine: Engine; text: string };
 };
+
+type Engine = "openai" | "elevenlabs";
+const ENGINE_LABEL: Record<Engine, string> = { openai: "OpenAI", elevenlabs: "ElevenLabs" };
 
 // Levels are smoothed RMS. On the AB13X the idle line sits near -68 dB RMS and soft
 // speech peaks near -42 dBFS, so +24 dB puts idle near -44 and speech above -38.
@@ -214,6 +219,9 @@ export function RadioView() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error ?? `Transcription failed (${res.status})`);
       const text = (json.text as string)?.trim();
+      const alts = (json.alternatives ?? []) as { engine: Engine; text: string }[];
+      const alt = alts.find((a) => a.engine !== json.engine);
+      if (text && alts.length > 1) setEntry(id, { engine: json.engine, alt });
       if (!text) {
         setFeed((prev) => prev.filter((e) => e.id !== id));
       } else {
@@ -586,6 +594,11 @@ function FeedRow({ entry: e }: { entry: Entry }) {
           </span>
         </div>
         {e.heard && <p className="mt-0.5 text-sm text-muted-foreground">Heard: “{e.heard}”</p>}
+        {e.engine && e.alt && (
+          <p className="mt-0.5 text-xs text-si-was">
+            {ENGINE_LABEL[e.engine]} chosen · {ENGINE_LABEL[e.alt.engine]} heard “{e.alt.text}”
+          </p>
+        )}
         {e.reply && <p className="mt-0.5 text-sm text-si-text">Spring It: “{e.reply}”</p>}
         {e.error && <p className="mt-0.5 text-sm text-si-red">{e.error}</p>}
         <p className="mt-0.5 text-xs text-muted-foreground">
