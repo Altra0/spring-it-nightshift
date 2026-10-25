@@ -79,7 +79,9 @@ The old fact is kept with `status: "replaced"` and `replacedBy` = new id.
 -> `{ corrections: Correction[] }` newest first, for the "before / after" screen.
 
 ### `POST /api/dev/reset`
-Wipes and re-seeds. For rehearsals. Disabled in production unless `ALLOW_RESET=1`.
+`{ keepFacts?: boolean }`. Wipes and re-seeds. With `keepFacts: true` it keeps
+standalone manager facts (added via `POST /api/facts`, e.g. the SOP set) and drops
+facts that came from corrections or replaces. For rehearsals. Disabled in production unless `ALLOW_RESET=1`.
 
 ### `POST /api/dev/close-shift`
 `{ shiftId: string }` -> `{ items: Item[] }` (the items it closed)

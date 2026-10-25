@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- loose JSON in a test script */
 // End-to-end demo story against a running app: `npm run dev`, then `npm run demo`.
-// BASE_URL defaults to http://localhost:3000. Pass --no-reset to keep existing data.
+// BASE_URL defaults to http://localhost:3000. Pass --no-reset to keep existing data,
+// or --keep-facts to reset demo state but keep standalone manager facts (the SOP set).
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const SHIFT = process.env.SHIFT_ID ?? `night-${new Date().toISOString().slice(0, 10)}`;
 const reset = !process.argv.includes("--no-reset");
+const keepFacts = process.argv.includes("--keep-facts");
 
 let failures = 0;
 function check(label: string, ok: boolean, detail?: unknown) {
@@ -30,12 +32,13 @@ async function report(text: string) {
 }
 
 async function main() {
-  if (reset) await api("/api/dev/reset", {});
+  if (reset) await api("/api/dev/reset", { keepFacts });
   console.log(`Spring It demo, shift ${SHIFT}, ${BASE}`);
 
   console.log("\n1. It doesn't know. One correction.");
   const r1 = await report("Concierge to base. Bin store door's propped open again.");
   check("report logged as an item", !!r1.item, r1);
+  if (r1.item?.category === "fire_safety") console.log("  NOTE  already fire safety before the correction: something in memory already says so");
   check("title is short (<= 6 words)", (r1.item?.title ?? "").split(/\s+/).length <= 6, r1.item?.title);
   const c = await api(`/api/items/${r1.item.id}/correct`, {
     category: "fire_safety",
@@ -72,8 +75,9 @@ async function main() {
   check("no open items left", openAfter === 0, openAfter);
 
   const { activity } = await api("/api/activity");
-  const models = new Set(activity.filter((a: any) => a.type === "model.called").map((a: any) => a.payload.model));
-  const tasks = new Set(activity.filter((a: any) => a.type === "model.called").map((a: any) => a.payload.task));
+  const calls = activity.filter((a: any) => a.type === "model.called" && a.shiftId === SHIFT);
+  const models = new Set(calls.map((a: any) => a.payload.model));
+  const tasks = new Set(calls.map((a: any) => a.payload.task));
   console.log(`\nmodel(s) used: ${[...models].join(", ")}`);
   console.log(`task fingerprint(s): ${[...tasks].join(", ")}`);
   check("one task fingerprint across all calls", tasks.size === 1, [...tasks]);
