@@ -161,7 +161,7 @@ export function ActivityView() {
       <PageTitle title="Activity" sub={<>Everything that happened on the desk, newest first. <LiveDot error={!!activity.error} /></>} />
       {activity.isLoading ? (
         <DeskCard><div className="space-y-3"><Skeleton className="h-12" /><Skeleton className="h-12" /><Skeleton className="h-12" /></div></DeskCard>
-      ) : activity.error ? (
+      ) : activity.error && !activity.data ? (
         <DeskCard><Empty title="Can't reach Spring It">{activity.error.message}. Retrying every few seconds.</Empty></DeskCard>
       ) : events.length === 0 ? (
         <DeskCard><Empty title="No activity yet">Reports, corrections and handovers show up here.</Empty></DeskCard>
