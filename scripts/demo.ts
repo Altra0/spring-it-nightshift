@@ -58,7 +58,8 @@ async function main() {
 
   console.log("\n3. The rules change.");
   const { facts } = await api("/api/facts");
-  const gate = facts.find((f: any) => /gate/i.test(f.text));
+  // The seed's side gate fact, never an SOP fact that happens to mention gates.
+  const gate = facts.find((f: any) => f.id === "fct_side_gate") ?? facts.find((f: any) => f.source === "seed" && /side gate/i.test(f.text));
   check("found the side gate fact", !!gate, facts);
   const rep = await api(`/api/facts/${gate.id}/replace`, { text: "Side gate locked for scaffolding until 12 Nov", shiftId: SHIFT });
   check("old fact kept as replaced", rep.replaced?.status === "replaced" && rep.replaced?.replacedBy === rep.fact.id, rep);

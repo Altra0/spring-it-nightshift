@@ -89,3 +89,7 @@ facts that came from corrections or replaces. For rehearsals. Disabled in produc
 Closes every open item from one shift, e.g. the SOP training batch, so a demo
 handover doesn't move them to the day manager. Facts are untouched. Same
 production guard as reset.
+
+### `POST /api/dev/restore-fact`
+`{ id: string }` -> `{ fact: Fact }`. Undoes a replace: the fact becomes active again
+and the fact that replaced it is deleted. Same production guard as reset.
