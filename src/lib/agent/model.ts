@@ -28,7 +28,7 @@ export function getModel(): ModelHandle {
       sessionOptions: (shiftId) => ({ openai: { metadata: { session_id: shiftId } } }),
     };
   }
-  const modelId = process.env.MUBIT_MODEL ?? "claude-sonnet-5-5";
+  const modelId = process.env.MUBIT_MODEL ?? "claude-haiku-4-5";
   const anthropic = createAnthropic({ apiKey: key, baseURL: process.env.MUBIT_BASE_URL ?? "https://api.mubit.ai/anthropic/v1" });
   return {
     model: anthropic(modelId),
