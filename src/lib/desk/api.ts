@@ -90,8 +90,17 @@ export type ReplayAnswer = {
 };
 export type Replay = { text: string; before: ReplayAnswer; after: ReplayAnswer };
 
+export type KnowledgeVersion = {
+  version: number; kind: "correction" | "fact_update"; text: string; replacedText?: string;
+  itemTitle?: string; correctionId?: string; by: string; at: string;
+};
+export function useKnowledge() {
+  return useSWR<{ onboarded: { version: number; label: string; factCount: number; at: string | null }; versions: KnowledgeVersion[]; current: number }>(
+    "/api/knowledge", fetcher, poll);
+}
+
 export function useStats() {
-  return useSWR<{ modelCalls: number; model: string; task: string }>("/api/stats", fetcher, { ...poll, shouldRetryOnError: false });
+  return useSWR<{ modelCalls: number; model: string; task: string; status?: string; consoleUrl?: string }>("/api/stats", fetcher, { ...poll, shouldRetryOnError: false });
 }
 
 /** Runs the corrected report again with memory as it was, and memory now. */

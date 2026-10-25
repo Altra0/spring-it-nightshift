@@ -4,10 +4,10 @@ import { useState } from "react";
 import { ArrowUpRight, BookMarked, Building2, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ApiError, type Replay, type ReplayAnswer, replay, useActivity, useCorrections, useFacts, useItems, useStats } from "@/lib/desk/api";
+import { ApiError, type Replay, type ReplayAnswer, replay, useActivity, useCorrections, useFacts, useItems, useKnowledge, useStats } from "@/lib/desk/api";
 import { dayTime, itemTitle, time } from "@/lib/desk/labels";
 import { SIGNED_IN } from "@/lib/desk/session";
-import type { Category, Fact, Urgency } from "@/lib/desk/types";
+import type { Category, Urgency } from "@/lib/desk/types";
 import { cn } from "@/lib/utils";
 import { DeskCard, Empty, PageTitle } from "./card";
 import { KeyValueCard, SwapIcon, showCall, showCategory, showUrgency } from "./chips";
@@ -22,29 +22,26 @@ function Disc({ children }: { children: React.ReactNode }) {
   return <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-si-tint text-si-neutral">{children}</span>;
 }
 
-/** Card 1: knowledge versions. v1 is the onboarding set; every later fact is a new version. */
+/** Card 1: knowledge versions from /api/knowledge, newest first, v1 = onboarding set. */
 function Knowledge() {
-  const facts = useFacts();
-  const all = facts.data?.facts ?? [];
-  const seed = all.filter((f) => f.source === "seed");
-  const later = all.filter((f) => f.source !== "seed").sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const versions = later.map((f, i) => ({ fact: f, v: i + 2, was: all.find((x) => x.replacedBy === f.id) as Fact | undefined })).reverse();
-
+  const k = useKnowledge();
+  const data = k.data;
   return (
-    <DeskCard label="What Spring It knows" action={<span className="text-sm text-muted-foreground">v{later.length + 1}</span>}>
-      {facts.isLoading ? (
+    <DeskCard label="What Spring It knows" action={data && <span className="text-sm text-muted-foreground">v{data.current}</span>}>
+      {k.isLoading ? (
         <div className="space-y-3 py-2"><Skeleton className="h-10" /><Skeleton className="h-10" /></div>
-      ) : facts.error && !facts.data ? (
-        <Empty title="Can't reach Spring It">{facts.error.message}. Retrying every few seconds.</Empty>
+      ) : !data ? (
+        <Empty title="Can't reach Spring It">{k.error?.message}. Retrying every few seconds.</Empty>
       ) : (
         <ul className="flex flex-col">
-          {versions.map(({ fact, v, was }) => (
-            <li key={fact.id} className="flex items-center gap-3 py-2.5">
-              {was ? <SwapIcon /> : <Disc><BookMarked className="size-[18px]" /></Disc>}
+          {data.versions.map((v) => (
+            <li key={`${v.version}-${v.at}`} className="flex items-center gap-3 py-2.5">
+              {v.kind === "fact_update" || v.replacedText ? <SwapIcon /> : <Disc><BookMarked className="size-[18px]" /></Disc>}
               <span className="min-w-0 flex-1">
-                <span className="block font-medium leading-snug">{fact.text}</span>
+                <span className="block font-medium leading-snug">{v.text}</span>
                 <span className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
-                  v{v} · {SIGNED_IN.name} · {time(fact.createdAt)}{was ? ` · was: ${was.text}` : ""}
+                  v{v.version} · {v.by} · {time(v.at)}
+                  {v.replacedText ? ` · was: ${v.replacedText}` : v.itemTitle ? ` · from ${v.itemTitle}` : ""}
                 </span>
               </span>
             </li>
@@ -52,9 +49,10 @@ function Knowledge() {
           <li className="flex items-center gap-3 py-2.5">
             <Disc><Building2 className="size-[18px]" /></Disc>
             <span className="min-w-0 flex-1">
-              <span className="block font-medium leading-snug">Onboarded from building SOPs</span>
+              <span className="block font-medium leading-snug">{data.onboarded.label}</span>
               <span className="mt-0.5 block text-sm text-muted-foreground">
-                v1 · {seed.length} {seed.length === 1 ? "fact" : "facts"}{seed[0] ? ` · ${dayTime(seed[0].createdAt)}` : ""}
+                v{data.onboarded.version} · {data.onboarded.factCount} {data.onboarded.factCount === 1 ? "fact" : "facts"}
+                {data.onboarded.at ? ` · ${dayTime(data.onboarded.at)}` : ""}
               </span>
             </span>
           </li>
@@ -176,11 +174,11 @@ function MubitCard() {
           { label: "Task", value: stats.data?.task ?? MUBIT_TASK },
           { label: "Model", value: stats.data?.model ?? MUBIT_MODEL },
           { label: "Calls sent for this building", value: calls === null ? "…" : calls.toLocaleString("en-GB") },
-          { label: "Status", value: "Queued to train this building's model" },
+          { label: "Status", value: stats.data?.status ?? "Queued to train this building's model" },
         ]}
       />
       <a
-        href={MUBIT_CONSOLE}
+        href={stats.data?.consoleUrl ?? MUBIT_CONSOLE}
         target="_blank"
         rel="noreferrer"
         className="mt-3 flex items-center justify-between rounded-2xl bg-si-page px-4 py-3.5 text-sm font-medium hover:bg-si-tint"
