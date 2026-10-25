@@ -5,6 +5,7 @@ export type ActivityType =
   | "report.received"
   | "item.created"
   | "item.corrected"
+  | "items.closed"
   | "fact.created"
   | "fact.replaced"
   | "contractor.scheduled"

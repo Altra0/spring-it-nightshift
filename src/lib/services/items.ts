@@ -1,4 +1,4 @@
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import type { Item } from "@/db/schema";
 import { DAY_MANAGER } from "@/db/seed";
@@ -16,10 +16,29 @@ export async function createItem(values: NewItem) {
   return item;
 }
 
-export async function listItems(status?: Item["status"]) {
+export async function listItems(status?: Item["status"], shiftId?: string) {
   const db = await getDb();
-  const q = db.select().from(schema.items);
-  return (status ? q.where(eq(schema.items.status, status)) : q).orderBy(asc(schema.items.createdAt));
+  const conds = [
+    status ? eq(schema.items.status, status) : undefined,
+    shiftId ? eq(schema.items.shiftId, shiftId) : undefined,
+  ].filter((c) => c !== undefined);
+  return db
+    .select()
+    .from(schema.items)
+    .where(conds.length ? and(...conds) : undefined)
+    .orderBy(asc(schema.items.createdAt));
+}
+
+/** Close every open item from one shift (e.g. a training batch) so handover skips them. */
+export async function closeShiftItems(shiftId: string) {
+  const db = await getDb();
+  const closed = await db
+    .update(schema.items)
+    .set({ status: "closed" })
+    .where(and(eq(schema.items.shiftId, shiftId), eq(schema.items.status, "open")))
+    .returning();
+  await logActivity("items.closed", { shiftId, count: closed.length, itemIds: closed.map((i) => i.id) }, shiftId);
+  return closed;
 }
 
 export async function getItem(id: string) {

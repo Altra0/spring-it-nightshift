@@ -39,8 +39,8 @@ type Fact = {
 `reply` is one short radio-style sentence for the radio page to speak. `item` is
 null only for `handOver` (spoken "End of shift, hand over."), which then fills `handover`.
 
-### `GET /api/items?status=open|handed_over|closed`
--> `{ items: Item[] }` (oldest first; no status = all)
+### `GET /api/items?status=open|handed_over|closed&shiftId=...`
+-> `{ items: Item[] }` (oldest first; both filters optional)
 
 ### `POST /api/items/:id/correct`
 `{ category?: Category, urgency?: Urgency, managerDecides?: boolean, fact?: string }`
@@ -70,7 +70,7 @@ The old fact is kept with `status: "replaced"` and `replacedBy` = new id.
 ### `GET /api/activity?limit=200`
 -> `{ activity: { seq, at, shiftId, type, payload }[] }` newest first. Types:
 `report.received`, `model.called`, `item.created`, `item.corrected`, `fact.created`,
-`fact.replaced`, `contractor.scheduled`, `handover.completed`, `mubit.step_outcome`.
+`fact.replaced`, `items.closed`, `contractor.scheduled`, `handover.completed`, `mubit.step_outcome`.
 `model.called` payload carries `model`, `tool`, `input`, `factsUsed`, `correctionsUsed`, `ms`.
 
 ### `GET /api/corrections`
@@ -78,3 +78,10 @@ The old fact is kept with `status: "replaced"` and `replacedBy` = new id.
 
 ### `POST /api/dev/reset`
 Wipes and re-seeds. For rehearsals. Disabled in production unless `ALLOW_RESET=1`.
+
+### `POST /api/dev/close-shift`
+`{ shiftId: string }` -> `{ items: Item[] }` (the items it closed)
+
+Closes every open item from one shift, e.g. the SOP training batch, so a demo
+handover doesn't move them to the day manager. Facts are untouched. Same
+production guard as reset.

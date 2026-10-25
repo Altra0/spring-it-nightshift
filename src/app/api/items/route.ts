@@ -5,7 +5,9 @@ import { bad } from "@/lib/http";
 const STATUSES = ["open", "handed_over", "closed"] as const;
 
 export async function GET(req: Request) {
-  const status = new URL(req.url).searchParams.get("status");
+  const params = new URL(req.url).searchParams;
+  const status = params.get("status");
+  const shiftId = params.get("shiftId") ?? undefined;
   if (status && !STATUSES.includes(status as (typeof STATUSES)[number])) return bad(`status must be one of ${STATUSES.join(", ")}`);
-  return NextResponse.json({ items: await listItems((status as (typeof STATUSES)[number]) ?? undefined) });
+  return NextResponse.json({ items: await listItems((status as (typeof STATUSES)[number]) ?? undefined, shiftId) });
 }
