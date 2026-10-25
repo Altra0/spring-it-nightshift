@@ -87,3 +87,17 @@ Wipes and re-seeds. For rehearsals. Disabled in production unless `ALLOW_RESET=1
 Closes every open item from one shift, e.g. the SOP training batch, so a demo
 handover doesn't move them to the day manager. Facts are untouched. Same
 production guard as reset.
+
+## Radio page (Stream C)
+
+Speech goes straight to OpenAI with `OPENAI_API_KEY`, server side. It never goes
+through Mubit, so it never touches the classifier's training task.
+
+### `POST /api/transcribe`
+`multipart/form-data` with `audio` (16 kHz mono WAV from the radio page; mp3/webm also accepted, max 10 MB)
+
+-> `{ text: string }` (`gpt-4o-mini-transcribe`, English, building vocabulary hint). 503 when no key.
+
+### `POST /api/speak`
+`{ text: string }` (max 600 chars) -> `audio/mpeg` (`gpt-4o-mini-tts`, voice `ash`). 503 when no key,
+and the page falls back to the browser's own voice.

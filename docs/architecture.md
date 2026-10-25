@@ -14,6 +14,8 @@ src/
   lib/agent/run.ts       handleReport: one model call, dispatch the tool call.
   lib/agent/mubit-control.ts  Opt-in (MUBIT_CONTROL=on) POST /v2/control/step_outcome; 404 on api.mubit.ai as of 25 Oct.
   lib/services/          items (correctItem, handOver), facts (getBuildingFacts, replaceFact), activity, shifts.
+  app/(desk)/radio/       Radio page: listen on the AB13X, transcribe, POST /api/report, speak the reply.
+  lib/radio/             Browser audio (worklet tap, gain, voice detection, WAV), transmit setting, OpenAI speech.
 scripts/demo.ts          End-to-end demo story with PASS/FAIL checks.
 ```
 
