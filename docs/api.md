@@ -105,7 +105,7 @@ through Mubit, so it never touches the classifier's training task.
 ### `POST /api/transcribe`
 `multipart/form-data` with `audio` (16 kHz mono WAV from the radio page; mp3/webm also accepted, max 10 MB)
 
--> `{ text: string }` (`gpt-4o-mini-transcribe`, English, building vocabulary hint). 503 when no key.
+-> `{ text: string }` (`gpt-4o-transcribe`, English, building vocabulary hint). 503 when no key.
 
 ### `POST /api/speak`
 `{ text: string }` (max 600 chars) -> `audio/mpeg` (`gpt-4o-mini-tts`, voice `ash`). 503 when no key,

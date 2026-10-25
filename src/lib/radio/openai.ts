@@ -4,7 +4,7 @@
 
 const OPENAI = "https://api.openai.com/v1";
 
-export const TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe";
+export const TRANSCRIBE_MODEL = "gpt-4o-transcribe";
 export const SPEECH_MODEL = "gpt-4o-mini-tts";
 export const SPEECH_VOICE = "ash";
 
