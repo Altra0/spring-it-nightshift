@@ -42,6 +42,7 @@ const PREROLL_S = 0.35; // audio kept from just before voice was detected
 const VOICE_ON_S = 0.06; // this much loud audio starts a recording
 const SILENCE_S = 1.0; // this much quiet ends one (auto mode)
 const MIN_S = 0.4; // shorter recordings are dropped as clicks
+const MIN_VOICED_S = 0.3; // recordings with less voice than this are dropped as noise
 const MAX_S = 30;
 const AFTER_REPLY_MS = 400; // half duplex: stay deaf briefly after speaking
 
@@ -236,7 +237,7 @@ export function RadioView() {
     const r = rec.current;
     rec.current = null;
     if (!r || phaseRef.current !== "recording") return;
-    if (r.seconds < MIN_S || (!r.held && r.voiced < VOICE_ON_S)) return go("listening");
+    if (r.seconds < MIN_S || r.voiced < MIN_VOICED_S) return go("listening");
     void finish(r.chunks, input.current?.sampleRate ?? 48000);
   }, [finish]);
 

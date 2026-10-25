@@ -8,10 +8,6 @@ export const TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe";
 export const SPEECH_MODEL = "gpt-4o-mini-tts";
 export const SPEECH_VOICE = "ash";
 
-// Vocabulary hint only (not instructions): words the night team actually says.
-const TRANSCRIBE_PROMPT =
-  "Concierge to base. Spring Court. Bin store, refuse room, level minus one, side gate, main entrance, car park, Flat 304, fire door, plumber, hand over.";
-
 const SPEECH_STYLE =
   "Calm building control-room voice on a two-way radio. Clear, brisk, even pace, no emotion.";
 
@@ -34,7 +30,8 @@ export async function transcribe(audio: Blob): Promise<string> {
   form.append("file", audio, `report.${ext}`);
   form.append("model", TRANSCRIBE_MODEL);
   form.append("language", "en");
-  form.append("prompt", TRANSCRIBE_PROMPT);
+  // No vocabulary prompt: on a quiet or noisy clip the model echoes it back as if
+  // it were heard (it once turned radio hiss into "... hand over" and handed over a shift).
   const res = await fetch(`${OPENAI}/audio/transcriptions`, {
     method: "POST",
     headers: { authorization: `Bearer ${key()}` },
