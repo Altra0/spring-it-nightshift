@@ -6,7 +6,7 @@
 - 06:20 Freeze announced as 07:00 London; README and tracker written.
 - ~06:25 Check-in #2 submitted.
 - 06:54 Deadline extended to 09:00 GMT. A safe version was submitted for the 07:00 countdown; we resubmit before 09:00.
-- SOP training: 71 of 72 reports landed in Mubit task "Spring It 3" (1 returned a 502).
+- SOP training: all 72 reports landed in Mubit task "Spring It 3" (1 resent after a 502).
 
 ## By 08:45 (hard stop for main)
 - [ ] Every stream has merged what works to `main`. No new features after this.
