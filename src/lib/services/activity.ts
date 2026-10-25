@@ -8,6 +8,7 @@ export type ActivityType =
   | "items.closed"
   | "fact.created"
   | "fact.replaced"
+  | "fact.restored"
   | "contractor.scheduled"
   | "handover.completed"
   | "model.called"

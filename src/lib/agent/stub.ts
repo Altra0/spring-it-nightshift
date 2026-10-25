@@ -53,7 +53,8 @@ function decide(text: string): { toolName: string; input: Record<string, unknown
   }
   const locked = facts.find((f) => /locked|closed/i.test(f));
   if (locked && category === "access") reply = `Copy, ${locked.replace(/\.$/, "").toLowerCase()}, send them to the main entrance.`;
-  return { toolName: "logReport", input: { summary, category, location: loc?.name ?? null, urgency, managerDecides, reply } };
+  const title = summary.split(/[,;]/)[0].split(/\s+/).slice(0, 6).join(" ");
+  return { toolName: "logReport", input: { title, summary, category, location: loc?.name ?? null, urgency, managerDecides, reply } };
 }
 
 export const stubModel: LanguageModelV4 = {

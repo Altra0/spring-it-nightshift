@@ -42,3 +42,10 @@ gives exactly one call shape per report.
 
 Facts are never deleted. Replacing one marks it `replaced` and links the successor,
 so "nothing lost" holds for the building's memory as well as for handover.
+
+## Frozen since 25 Oct 06:00
+
+The system prompt, tool set and tool schemas (including `logReport.title`) are frozen
+for the rest of the hackathon. `src/lib/agent/fingerprint.ts` hashes them; every
+`model.called` activity event records that fingerprint and `npm run demo` fails if
+more than one appears. Changing any of them starts a new Mubit task.

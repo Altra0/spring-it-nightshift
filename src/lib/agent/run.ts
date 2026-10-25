@@ -9,6 +9,7 @@ import { ensureShift } from "@/lib/services/shifts";
 import type { Item } from "@/db/schema";
 import { getModel } from "./model";
 import { SYSTEM_PROMPT, buildUserMessage } from "./prompt";
+import { TASK_FINGERPRINT } from "./fingerprint";
 import { AGENT_TOOLS, addHandoverItemInput, handOverInput, logReportInput, scheduleContractorInput } from "./tools";
 
 export type ReportInput = { text: string; shiftId: string; source: "radio" | "text" };
@@ -53,6 +54,7 @@ export async function handleReport(input: ReportInput): Promise<ReportResult> {
     "model.called",
     {
       model: label,
+      task: TASK_FINGERPRINT,
       reportId: report.id,
       tool: call?.toolName ?? null,
       input: call?.input ?? null,
@@ -71,6 +73,7 @@ export async function handleReport(input: ReportInput): Promise<ReportResult> {
       const item = await createItem({
         ...base,
         kind: "report",
+        title: a.title,
         summary: a.summary,
         category: a.category,
         location: a.location,
