@@ -12,6 +12,12 @@ export function peak(samples: Float32Array) {
   return p;
 }
 
+export function meanSquare(samples: Float32Array) {
+  let sum = 0;
+  for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+  return samples.length ? sum / samples.length : 0;
+}
+
 export function concat(chunks: Float32Array[]) {
   const out = new Float32Array(chunks.reduce((n, c) => n + c.length, 0));
   let o = 0;

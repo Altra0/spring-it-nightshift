@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { itemTitle, time } from "@/lib/desk/labels";
 import type { Item } from "@/lib/desk/types";
 import { cn } from "@/lib/utils";
-import { beep, concat, dbfs, normalise, peak, resample, wav } from "@/lib/radio/audio";
+import { beep, concat, meanSquare, normalise, resample, wav } from "@/lib/radio/audio";
 import { aiocOutput, defaultInput, defaultOutput, listDevices, openInput, type Devices, type InputHandle } from "@/lib/radio/input";
 import {
   TRANSMIT_LABEL, aiocConnected, aiocTransmitter, connectAioc, speakerTransmitter, webSerialSupported,
@@ -31,7 +31,8 @@ type Entry = {
   action?: string; error?: string; pending?: boolean;
 };
 
-// The AB13X peaks around -42 dBFS on soft speech, so the default lifts it ~24 dB.
+// Levels are smoothed RMS. On the AB13X the idle line sits near -68 dB RMS and soft
+// speech peaks near -42 dBFS, so +24 dB puts idle near -44 and speech above -38.
 const DEFAULTS: Settings = { mode: "hold", transmit: "speaker", gainDb: 24, thresholdDb: -38 };
 const SETTINGS_KEY = "si.radio.settings";
 const FEED_KEY = "si.radio.feed";
@@ -121,6 +122,7 @@ export function RadioView() {
   const rec = useRef<{ chunks: Float32Array[]; seconds: number; voiced: number; quiet: number; held: boolean } | null>(null);
   const preroll = useRef<Float32Array[]>([]);
   const loud = useRef(0);
+  const energy = useRef(0);
 
   useEffect(() => {
     // Stored settings and feed are read after mount so prerendering stays clean.
@@ -243,7 +245,9 @@ export function RadioView() {
     if (!handle) return;
     const cfg = s.current;
     const dur = chunk.length / handle.sampleRate;
-    const db = dbfs(peak(chunk)) + cfg.gainDb;
+    // ~30 ms smoothing so single clicks don't count as voice.
+    energy.current = energy.current * 0.9 + meanSquare(chunk) * 0.1;
+    const db = (energy.current > 1e-12 ? 10 * Math.log10(energy.current) : -120) + cfg.gainDb;
     level.current = Math.max(db, level.current);
     const voice = db >= cfg.thresholdDb;
     const p = phaseRef.current;
