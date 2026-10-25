@@ -54,6 +54,11 @@ API result (null = not sent; off by default since that route 404s).
 ### `GET /api/facts` (active only), `GET /api/facts?all=1` (with replaced)
 -> `{ facts: Fact[] }`
 
+### `POST /api/facts`
+`{ text: string, shiftId?: string }` -> `{ fact: Fact }`
+
+Manager adds a standalone fact (source `correction`). Logs `fact.created`.
+
 ### `POST /api/facts/:id/replace`
 `{ text: string, shiftId?: string }` -> `{ fact: Fact, replaced: Fact }`
 
