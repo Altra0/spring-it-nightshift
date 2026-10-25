@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { desk, useActivity, useCorrections } from "@/lib/desk/api";
-import { CATEGORIES, CATEGORY_LABEL, URGENCIES, URGENCY_LABEL, dayTime, time } from "@/lib/desk/labels";
+import { CATEGORIES, CATEGORY_LABEL, URGENCIES, URGENCY_LABEL, dayTime, itemTitle, time } from "@/lib/desk/labels";
+import { SIGNED_IN } from "@/lib/desk/session";
 import { previous } from "@/lib/desk/history";
 import type { Category, Correction, Decision, Fact, Item, Urgency } from "@/lib/desk/types";
 import { ItemIcon, KeyValueCard, NeedsYourCall, UrgencyChip, showCall, showCategory, showUrgency } from "./chips";
@@ -64,7 +65,7 @@ function ItemDetail({ item }: { item: Item }) {
   // Earlier versions, newest first: each correction's "before", set by Spring It (the first) or the manager.
   const versions = history.map((c, i) => {
     const first = i === history.length - 1;
-    return { id: c.id, decision: c.before as Decision, by: first ? "Spring It" : "Manager", at: first ? item.createdAt : history[i + 1].createdAt };
+    return { id: c.id, decision: c.before as Decision, by: first ? "Spring It" : SIGNED_IN.name, at: first ? item.createdAt : history[i + 1].createdAt };
   });
   const status =
     item.status === "open" ? "Open" : item.status === "handed_over" ? `Handed over${item.assignee ? ` to ${item.assignee}` : ""}` : "Closed";
@@ -73,7 +74,7 @@ function ItemDetail({ item }: { item: Item }) {
     <div className="flex min-h-full flex-col">
       <SheetHeader className="gap-3 px-5 pt-6 pb-4">
         <ItemIcon item={item} className="size-12" iconClassName="size-5" />
-        <SheetTitle className="pr-8 text-xl leading-snug font-semibold">{item.summary}</SheetTitle>
+        <SheetTitle className="pr-8 text-xl leading-snug font-semibold">{itemTitle(item)}</SheetTitle>
         <SheetDescription className="text-sm">
           {[item.location, dayTime(item.createdAt), item.status === "handed_over" ? `handed over to ${item.assignee}` : null]
             .filter(Boolean)
@@ -110,7 +111,7 @@ function ItemDetail({ item }: { item: Item }) {
               : []),
             {
               label: "Changed by",
-              value: history.length ? `Manager · ${time(history[0].createdAt)}` : `Spring It · ${time(item.createdAt)}`,
+              value: history.length ? `${SIGNED_IN.name} · ${time(history[0].createdAt)}` : `Spring It · ${time(item.createdAt)}`,
             },
           ]}
         />

@@ -50,7 +50,7 @@ export function KeyValueCard({ rows }: { rows: { label: string; value: React.Rea
           <dt className="text-sm text-muted-foreground">{r.label}</dt>
           <dd className="text-right">
             <span className="block text-sm font-medium">{r.value}</span>
-            {r.was !== undefined && <span className="block text-xs text-muted-foreground">was {r.was}</span>}
+            {r.was !== undefined && <span className="block text-xs text-si-was">was {r.was}</span>}
           </dd>
         </div>
       ))}

@@ -7,7 +7,7 @@ export type Urgency = "low" | "normal" | "urgent";
 export type Item = {
   id: string; shiftId: string; reportId: string | null;
   kind: "report" | "contractor" | "note";
-  summary: string; category: Category; location: string | null;
+  title?: string; summary: string; category: Category; location: string | null;
   urgency: Urgency; managerDecides: boolean;
   status: "open" | "handed_over" | "closed";
   assignee: string | null; dueAt: string | null;

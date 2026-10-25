@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCorrections, useFacts, useItems } from "@/lib/desk/api";
-import { time } from "@/lib/desk/labels";
+import { itemTitle, time } from "@/lib/desk/labels";
 import type { Correction } from "@/lib/desk/types";
 import { DeskCard, Empty, PageTitle } from "./card";
 import { SwapIcon, showCall, showCategory, showUrgency } from "./chips";
@@ -34,8 +34,8 @@ export function CorrectionsView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageTitle title="Corrections" sub={<>Every time the manager changed what Spring It decided. <LiveDot error={!!corrections.error} /></>} />
-      <DeskCard label="Updated by the manager">
+      <PageTitle title="Corrections" sub={<>Every time you changed what Spring It decided. <LiveDot error={!!corrections.error} /></>} />
+      <DeskCard label="Your corrections">
         {corrections.isLoading ? (
           <div className="space-y-3 py-2"><Skeleton className="h-12" /><Skeleton className="h-12" /></div>
         ) : corrections.error ? (
@@ -56,7 +56,7 @@ export function CorrectionsView() {
                   >
                     <SwapIcon />
                     <span className="min-w-0 flex-1">
-                      <span className="line-clamp-2 font-medium leading-snug sm:line-clamp-1">{item?.summary ?? "Item"}</span>
+                      <span className="line-clamp-2 font-medium leading-snug sm:line-clamp-1">{item ? itemTitle(item) : "Item"}</span>
                       <span className="mt-0.5 block truncate text-sm text-muted-foreground">
                         Updated {time(c.createdAt)}{was ? ` · was: ${was}` : ""}
                       </span>

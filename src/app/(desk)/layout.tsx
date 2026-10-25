@@ -10,7 +10,7 @@ export default function DeskLayout({ children }: { children: React.ReactNode }) 
           <SidebarTrigger className="size-9 rounded-full bg-white" aria-label="Open menu" />
           <span className="font-semibold">Spring It</span>
         </header>
-        <div className="mx-auto w-full max-w-[620px] px-4 pt-4 pb-16 md:pt-10">{children}</div>
+        <div className="mx-auto w-full max-w-[680px] px-4 pt-4 pb-16 md:pt-10">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

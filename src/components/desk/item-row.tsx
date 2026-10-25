@@ -1,4 +1,4 @@
-import { time } from "@/lib/desk/labels";
+import { itemTitle, time } from "@/lib/desk/labels";
 import type { Item } from "@/lib/desk/types";
 import { ItemIcon, NeedsYourCall, UrgencyChip } from "./chips";
 
@@ -15,7 +15,7 @@ export function ItemRow({ item, was, onOpen }: { item: Item; was?: string; onOpe
       >
         <ItemIcon item={item} className="size-10" iconClassName="size-[18px]" />
         <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 font-medium leading-snug sm:line-clamp-1">{item.summary}</span>
+          <span className="line-clamp-2 font-medium leading-snug sm:line-clamp-1">{itemTitle(item)}</span>
           <span className="mt-0.5 block truncate text-sm text-muted-foreground">
             {sub}
           </span>
@@ -24,7 +24,7 @@ export function ItemRow({ item, was, onOpen }: { item: Item; was?: string; onOpe
           {item.managerDecides && <NeedsYourCall />}
           <span className="flex flex-col items-end gap-0.5">
             <UrgencyChip urgency={item.urgency} />
-            {was && <span className="text-xs text-muted-foreground">was {was}</span>}
+            {was && <span className="text-xs text-si-was">was {was}</span>}
           </span>
         </span>
       </button>

@@ -75,3 +75,14 @@ export function shiftLabel(shiftId: string) {
   const d = new Date(`${m[1]}T12:00:00`);
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
+
+/** Row title: the API's short `title`. Older data without one falls back to the
+ *  summary minus any radio call-sign opener. The radio quote stays in the detail sheet. */
+export function itemTitle(item: Pick<Item, "title" | "summary">) {
+  if (item.title?.trim()) return item.title;
+  const t = item.summary
+    .replace(/^\s*[\w\s]{2,30}\bto (base|control|desk|concierge)\b[.,:!]?\s*/i, "")
+    .replace(/\.\s*$/, "")
+    .trim();
+  return t ? t[0].toUpperCase() + t.slice(1) : item.summary;
+}

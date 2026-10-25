@@ -9,6 +9,8 @@
   --si-marker: #e1d2b7;
   --si-card: #ffffff;
   --si-muted-text: #6b7a8a;
+  /* Grey "was …" lines: a step darker than muted text so they still read. */
+  --si-was: #4f6175;
   --si-line: #e3e9ee;
   --si-tint: #e8eef3;
   --si-amber: #b7791f;
@@ -55,6 +57,7 @@
   --color-si-red: var(--si-red);
   --color-si-marker: var(--si-marker);
   --color-si-tint: var(--si-tint);
+  --color-si-was: var(--si-was);
   --color-si-amber: var(--si-amber);
   --color-si-green: var(--si-green);
 

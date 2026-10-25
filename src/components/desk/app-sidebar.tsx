@@ -10,6 +10,7 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { SIGNED_IN } from "@/lib/desk/session";
 
 const DESK = [
   { href: "/", label: "Home", icon: House },
@@ -63,11 +64,11 @@ export function AppSidebar() {
       <SidebarHeader className="px-4 pt-6 pb-2">
         <div className="flex items-center gap-3">
           <Avatar className="size-10">
-            <AvatarFallback className="bg-si-neutral font-medium text-white">DB</AvatarFallback>
+            <AvatarFallback className="bg-si-neutral font-medium text-white">{SIGNED_IN.initials}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 leading-tight">
-            <div className="truncate font-semibold">Datte Bayo</div>
-            <div className="truncate text-xs text-muted-foreground">Estate manager, Spring Court</div>
+            <div className="truncate font-semibold">{SIGNED_IN.name}</div>
+            <div className="truncate text-xs text-muted-foreground">{SIGNED_IN.role}, on duty tonight</div>
           </div>
         </div>
       </SidebarHeader>
