@@ -19,6 +19,8 @@ function section(text: string, name: string): string[] {
 
 function decide(text: string): { toolName: string; input: Record<string, unknown> } {
   const report = text.split(/REPORT \([^)]*\):\n/)[1]?.trim() ?? "";
+  // Short summary like the real model's: drop the radio call-sign opener.
+  const summary = report.replace(/^[\w ]+ to [\w ]+[.,]\s*/i, "").replace(/\.$/, "");
   const r = report.toLowerCase();
   if (/hand ?over|end of (the )?shift/.test(r)) {
     return { toolName: "handOver", input: { reply: "Copy, handing everything over to the day manager." } };
@@ -34,7 +36,7 @@ function decide(text: string): { toolName: string; input: Record<string, unknown
   if (/plumber|electrician|engineer|contractor/.test(r)) {
     return {
       toolName: "scheduleContractor",
-      input: { trade: r.match(/plumber|electrician|engineer|contractor/)![0], location: loc?.name ?? null, due: null, summary: report, reply: "Copy, contractor noted." },
+      input: { trade: r.match(/plumber|electrician|engineer|contractor/)![0], location: loc?.name ?? null, due: null, summary, reply: "Copy, contractor noted." },
     };
   }
   const facts = section(text, "BUILDING FACTS").filter((f) => loc && match(f.toLowerCase(), loc));
@@ -51,7 +53,7 @@ function decide(text: string): { toolName: string; input: Record<string, unknown
   }
   const locked = facts.find((f) => /locked|closed/i.test(f));
   if (locked && category === "access") reply = `Copy, ${locked.replace(/\.$/, "").toLowerCase()}, send them to the main entrance.`;
-  return { toolName: "logReport", input: { summary: report, category, location: loc?.name ?? null, urgency, managerDecides, reply } };
+  return { toolName: "logReport", input: { summary, category, location: loc?.name ?? null, urgency, managerDecides, reply } };
 }
 
 export const stubModel: LanguageModelV4 = {

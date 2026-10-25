@@ -14,7 +14,9 @@ type Urgency = "low" | "normal" | "urgent";
 type Item = {
   id: string; shiftId: string; reportId: string | null;
   kind: "report" | "contractor" | "note";
-  summary: string; category: Category; location: string | null;
+  title: string;             // short list title ("Fire door propped open"); use for rows
+  summary: string;           // one line in Spring It's words; the radio quote is the report's rawText
+  category: Category; location: string | null;
   urgency: Urgency; managerDecides: boolean;
   status: "open" | "handed_over" | "closed";
   assignee: string | null;   // contractor trade, or "Datte Bayo" after handover

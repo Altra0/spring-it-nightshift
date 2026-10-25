@@ -24,6 +24,8 @@ create table if not exists items (
 create table if not exists corrections (
   id text primary key, item_id text not null, before jsonb not null, after jsonb not null,
   fact_id text, mubit_accepted boolean, created_at timestamptz not null default now());
+alter table items add column if not exists title text;
+update items set title = left(summary, 60) where title is null;
 create table if not exists activity (
   seq integer primary key generated always as identity, at timestamptz not null default now(),
   shift_id text, type text not null, payload jsonb not null);

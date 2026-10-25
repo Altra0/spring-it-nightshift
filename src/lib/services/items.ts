@@ -9,9 +9,17 @@ import { recordCorrectionWithMubit } from "@/lib/agent/mubit-control";
 
 type NewItem = Omit<typeof schema.items.$inferInsert, "id">;
 
+/** Short list title from a one-line summary: first sentence, no trailing period, at most ~60 chars. */
+export function deriveTitle(summary: string): string {
+  let t = summary.trim().split(/(?<=[.!?])\s+/)[0].replace(/[.!?]+$/, "");
+  if (t.length > 60) t = t.slice(0, 60).replace(/\s+\S*$/, "") + "…";
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 export async function createItem(values: NewItem) {
   const db = await getDb();
-  const [item] = await db.insert(schema.items).values({ id: newId("itm"), ...values }).returning();
+  const title = values.title?.trim() || deriveTitle(values.summary);
+  const [item] = await db.insert(schema.items).values({ id: newId("itm"), ...values, title }).returning();
   await logActivity("item.created", { item }, item.shiftId);
   return item;
 }

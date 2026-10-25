@@ -84,6 +84,7 @@ export async function handleReport(input: ReportInput): Promise<ReportResult> {
       const item = await createItem({
         ...base,
         kind: "contractor",
+        title: `${a.trade.charAt(0).toUpperCase()}${a.trade.slice(1)} visit${a.location ? ` to ${a.location}` : ""}${a.due ? `, ${a.due}` : ""}`,
         summary: a.summary,
         category: "contractor",
         location: a.location,

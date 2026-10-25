@@ -45,6 +45,8 @@ export const items = pgTable("items", {
   shiftId: text("shift_id").notNull(),
   reportId: text("report_id"),
   kind: text("kind", { enum: ["report", "contractor", "note"] }).notNull().default("report"),
+  // Short Spring It title for list rows, e.g. "Fire door propped open".
+  title: text("title"),
   summary: text("summary").notNull(),
   category: text("category").notNull(),
   location: text("location"),
