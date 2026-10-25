@@ -74,3 +74,12 @@ export function useShiftId(activity: Activity[] | undefined) {
   const today = useSyncExternalStore(noop, todayShiftId, () => null);
   return activity?.find((a) => a.shiftId)?.shiftId ?? today;
 }
+
+const londonDay = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "Europe/London" });
+const todayKey = () => londonDay(new Date());
+
+/** Today's date in London as YYYY-MM-DD, read on the client only. */
+export function useToday() {
+  return useSyncExternalStore(noop, todayKey, () => null);
+}
+export { londonDay };

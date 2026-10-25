@@ -3,11 +3,23 @@
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCorrections, useFacts, useItems } from "@/lib/desk/api";
-import { dayTime } from "@/lib/desk/labels";
+import { time } from "@/lib/desk/labels";
+import type { Correction } from "@/lib/desk/types";
 import { DeskCard, Empty, PageTitle } from "./card";
-import { ItemIcon } from "./chips";
-import { DecisionDiff, ItemSheet } from "./item-sheet";
+import { SwapIcon, showCall, showCategory, showUrgency } from "./chips";
+import { ItemSheet } from "./item-sheet";
 import { LiveDot } from "./live-dot";
+
+/** The previous values of whatever changed, e.g. "Security, Normal". */
+export function wasValues(c: Pick<Correction, "before" | "after">) {
+  return [
+    c.before.category !== c.after.category && showCategory(c.before.category),
+    c.before.urgency !== c.after.urgency && showUrgency(c.before.urgency),
+    c.before.managerDecides !== c.after.managerDecides && showCall(c.before.managerDecides).toLowerCase(),
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
 
 export function CorrectionsView() {
   const corrections = useCorrections();
@@ -23,38 +35,37 @@ export function CorrectionsView() {
   return (
     <div className="flex flex-col gap-4">
       <PageTitle title="Corrections" sub={<>Every time the manager changed what Spring It decided. <LiveDot error={!!corrections.error} /></>} />
-      <DeskCard label="Before and after">
+      <DeskCard label="Updated by the manager">
         {corrections.isLoading ? (
-          <div className="space-y-3 py-2"><Skeleton className="h-16" /><Skeleton className="h-16" /></div>
+          <div className="space-y-3 py-2"><Skeleton className="h-12" /><Skeleton className="h-12" /></div>
         ) : corrections.error ? (
           <Empty title="Can't reach Spring It">{corrections.error.message}. Retrying every few seconds.</Empty>
         ) : rows.length === 0 ? (
           <Empty title="No corrections yet">Open an item on Home and use Correct.</Empty>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="flex flex-col">
             {rows.map((c) => {
               const item = itemById.get(c.itemId);
               const fact = c.factId ? factById.get(c.factId) : undefined;
+              const was = wasValues(c);
               return (
                 <li key={c.id}>
                   <button
                     onClick={() => item && setSelectedId(item.id)}
-                    className="-mx-2 flex w-[calc(100%+1rem)] gap-3 rounded-2xl px-2 py-3 text-left hover:bg-si-page"
+                    className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-2xl px-2 py-2.5 text-left hover:bg-si-page"
                   >
-                    {item && <ItemIcon item={{ ...item, category: c.after.category }} className="size-10" iconClassName="size-[18px]" />}
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium leading-snug">{item?.summary ?? "Item"}</p>
-                      <p className="mb-2 text-sm text-muted-foreground">
-                        {[item?.location, dayTime(c.createdAt)].filter(Boolean).join(" · ")}
-                      </p>
-                      <DecisionDiff before={c.before} after={c.after} />
-                      {fact && (
-                        <p className="mt-2 rounded-2xl bg-si-page px-3 py-2 text-sm">
-                          <span className="text-muted-foreground">Remembered: </span>
-                          <span className={fact.status === "replaced" ? "line-through decoration-si-red/60" : ""}>{fact.text}</span>
-                        </p>
-                      )}
-                    </div>
+                    <SwapIcon />
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2 font-medium leading-snug sm:line-clamp-1">{item?.summary ?? "Item"}</span>
+                      <span className="mt-0.5 block truncate text-sm text-muted-foreground">
+                        Updated {time(c.createdAt)}{was ? ` · was: ${was}` : ""}
+                      </span>
+                      {fact && <span className="block truncate text-sm text-muted-foreground">Remembered: {fact.text}</span>}
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block text-sm font-semibold">{showCategory(c.after.category)}</span>
+                      <span className="block text-xs text-muted-foreground">{showUrgency(c.after.urgency)}</span>
+                    </span>
                   </button>
                 </li>
               );

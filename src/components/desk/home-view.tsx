@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useShiftId, useActivity, useItems } from "@/lib/desk/api";
-import { shiftLabel } from "@/lib/desk/labels";
-import type { Item } from "@/lib/desk/types";
+import { useActivity, useCorrections, useItems, useShiftId } from "@/lib/desk/api";
+import { itemCorrections, previous } from "@/lib/desk/history";
+import { CATEGORY_LABEL, URGENCY_LABEL, shiftLabel } from "@/lib/desk/labels";
+import type { Correction, Item } from "@/lib/desk/types";
 import { DeskCard, Empty, PillTabs } from "./card";
 import { HeroActions } from "./actions";
 import { ItemRow } from "./item-row";
@@ -16,6 +17,7 @@ type Tab = "open" | "call" | "handed_over";
 export function HomeView() {
   const items = useItems();
   const activity = useActivity(50);
+  const corrections = useCorrections();
   const [tab, setTab] = useState<Tab>("open");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -77,7 +79,7 @@ export function HomeView() {
         ) : (
           <ul className="flex flex-col">
             {rows.map((item: Item) => (
-              <ItemRow key={item.id} item={item} onOpen={(i) => setSelectedId(i.id)} />
+              <ItemRow key={item.id} item={item} was={wasLine(item, corrections.data?.corrections)} onOpen={(i) => setSelectedId(i.id)} />
             ))}
           </ul>
         )}
@@ -86,4 +88,16 @@ export function HomeView() {
       <ItemSheet item={selected} onClose={() => setSelectedId(null)} />
     </div>
   );
+}
+
+/** Grey "was …" under the urgency chip: the urgency it had, else the category. */
+function wasLine(item: Item, corrections: Correction[] | undefined) {
+  if (!item.corrected) return undefined;
+  const history = itemCorrections(item.id, corrections);
+  const u = previous("urgency", history);
+  if (u) return URGENCY_LABEL[u];
+  const c = previous("category", history);
+  if (c) return CATEGORY_LABEL[c];
+  const m = previous("managerDecides", history);
+  return m === undefined ? undefined : m ? "your call" : "team's call";
 }

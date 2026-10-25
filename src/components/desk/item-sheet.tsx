@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronRight, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -10,9 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { desk, useActivity, useCorrections } from "@/lib/desk/api";
-import { CATEGORIES, CATEGORY_LABEL, URGENCIES, URGENCY_LABEL, dayTime } from "@/lib/desk/labels";
+import { CATEGORIES, CATEGORY_LABEL, URGENCIES, URGENCY_LABEL, dayTime, time } from "@/lib/desk/labels";
+import { previous } from "@/lib/desk/history";
 import type { Category, Correction, Decision, Fact, Item, Urgency } from "@/lib/desk/types";
-import { BeforeAfter, ItemIcon, NeedsYourCall, UrgencyChip, showCall, showCategory, showUrgency } from "./chips";
+import { ItemIcon, KeyValueCard, NeedsYourCall, UrgencyChip, showCall, showCategory, showUrgency } from "./chips";
 
 function Block({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -20,19 +21,6 @@ function Block({ label, children }: { label: string; children: React.ReactNode }
       <h3 className="mb-2 text-sm font-medium text-muted-foreground">{label}</h3>
       {children}
     </section>
-  );
-}
-
-export function DecisionDiff({ before, after }: { before: Decision; after: Decision }) {
-  return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-      <dt className="text-muted-foreground">Category</dt>
-      <dd><BeforeAfter before={showCategory(before.category)} after={showCategory(after.category)} /></dd>
-      <dt className="text-muted-foreground">Urgency</dt>
-      <dd><BeforeAfter before={showUrgency(before.urgency)} after={showUrgency(after.urgency)} /></dd>
-      <dt className="text-muted-foreground">Who decides</dt>
-      <dd><BeforeAfter before={showCall(before.managerDecides)} after={showCall(after.managerDecides)} /></dd>
-    </dl>
   );
 }
 
@@ -68,11 +56,18 @@ function ItemDetail({ item }: { item: Item }) {
     };
   }, [activity, item.reportId]);
 
+  const [showEarlier, setShowEarlier] = useState(false);
   const history = (corrections?.corrections ?? []).filter((c) => c.itemId === item.id);
-  // What Spring It first decided: the oldest correction's "before", else the item as it stands.
-  const firstDecision: Decision = history.length
-    ? history[history.length - 1].before
-    : { category: item.category, urgency: item.urgency, managerDecides: item.managerDecides };
+  const wasCategory = previous("category", history);
+  const wasUrgency = previous("urgency", history);
+  const wasCall = previous("managerDecides", history);
+  // Earlier versions, newest first: each correction's "before", set by Spring It (the first) or the manager.
+  const versions = history.map((c, i) => {
+    const first = i === history.length - 1;
+    return { id: c.id, decision: c.before as Decision, by: first ? "Spring It" : "Manager", at: first ? item.createdAt : history[i + 1].createdAt };
+  });
+  const status =
+    item.status === "open" ? "Open" : item.status === "handed_over" ? `Handed over${item.assignee ? ` to ${item.assignee}` : ""}` : "Closed";
 
   return (
     <div className="flex min-h-full flex-col">
@@ -104,17 +99,26 @@ function ItemDetail({ item }: { item: Item }) {
           )}
         </Block>
 
-        <Block label="What Spring It decided">
-          <DecisionDiff before={firstDecision} after={firstDecision} />
-          {item.kind === "contractor" && (
-            <p className="mt-2 text-sm">Booked {item.assignee ?? "a contractor"}{item.dueAt ? `, due ${item.dueAt}` : ""}.</p>
-          )}
-          {report.reply && (
-            <p className="mt-3 rounded-2xl bg-si-page px-3 py-2 text-sm">
-              <span className="text-muted-foreground">Said on the radio: </span>“{report.reply}”
-            </p>
-          )}
-        </Block>
+        <KeyValueCard
+          rows={[
+            { label: "Status", value: status },
+            { label: "Category", value: showCategory(item.category), was: wasCategory && showCategory(wasCategory) },
+            { label: "Urgency", value: showUrgency(item.urgency), was: wasUrgency && showUrgency(wasUrgency) },
+            { label: "Who decides", value: showCall(item.managerDecides), was: wasCall === undefined ? undefined : showCall(wasCall) },
+            ...(item.kind === "contractor"
+              ? [{ label: "Contractor", value: [item.assignee, item.dueAt && `due ${item.dueAt}`].filter(Boolean).join(", ") || "Booked" }]
+              : []),
+            {
+              label: "Changed by",
+              value: history.length ? `Manager · ${time(history[0].createdAt)}` : `Spring It · ${time(item.createdAt)}`,
+            },
+          ]}
+        />
+        {report.reply && (
+          <p className="rounded-2xl bg-card px-5 py-3.5 text-sm">
+            <span className="text-muted-foreground">Spring It said on the radio: </span>“{report.reply}”
+          </p>
+        )}
 
         {/* Remount the form when the item changes underneath it, so it starts from the live values. */}
         <CorrectForm
@@ -124,17 +128,33 @@ function ItemDetail({ item }: { item: Item }) {
           onSaved={setResult}
         />
 
-        {history.length > 0 && (
-          <Block label="Earlier corrections">
-            <ul className="flex flex-col gap-4">
-              {history.map((c) => (
-                <li key={c.id} className="flex flex-col gap-1.5">
-                  <span className="text-xs text-muted-foreground">{dayTime(c.createdAt)}</span>
-                  <DecisionDiff before={c.before} after={c.after} />
-                </li>
+        {versions.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h3 className="px-2 pt-2 text-sm font-medium text-muted-foreground">Earlier</h3>
+            <button
+              onClick={() => setShowEarlier((v) => !v)}
+              aria-expanded={showEarlier}
+              className="flex items-center justify-between rounded-3xl bg-card px-5 py-4 text-left font-medium hover:bg-white/80"
+            >
+              Previous versions
+              <span className="flex items-center gap-1 text-sm font-normal text-muted-foreground">
+                {versions.length}
+                <ChevronRight className={cn("size-4 transition-transform", showEarlier && "rotate-90")} />
+              </span>
+            </button>
+            {showEarlier &&
+              versions.map((v) => (
+                <KeyValueCard
+                  key={v.id}
+                  rows={[
+                    { label: "Category", value: showCategory(v.decision.category) },
+                    { label: "Urgency", value: showUrgency(v.decision.urgency) },
+                    { label: "Who decides", value: showCall(v.decision.managerDecides) },
+                    { label: "Set by", value: `${v.by} · ${dayTime(v.at)}` },
+                  ]}
+                />
               ))}
-            </ul>
-          </Block>
+          </section>
         )}
       </div>
     </div>
@@ -176,8 +196,7 @@ function CorrectForm({ item, result, onSaved }: { item: Item; result: Result | n
     <Block label="Correct">
       {result && (
         <div className="mb-4 rounded-2xl bg-si-page p-4" role="status">
-          <p className="mb-2 text-sm font-medium">Saved. Spring It will use this from the next report.</p>
-          <DecisionDiff before={result.correction.before} after={result.correction.after} />
+          <p className="text-sm font-medium">Saved at {time(result.correction.createdAt)}. Spring It uses this from the next report.</p>
           {result.fact && (
             <p className="mt-2 text-sm">
               <span className="text-muted-foreground">Added to memory: </span>

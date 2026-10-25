@@ -2,7 +2,8 @@ import { time } from "@/lib/desk/labels";
 import type { Item } from "@/lib/desk/types";
 import { ItemIcon, NeedsYourCall, UrgencyChip } from "./chips";
 
-export function ItemRow({ item, onOpen }: { item: Item; onOpen: (item: Item) => void }) {
+/** `was` is the grey line under the urgency chip on a corrected row, e.g. "was Low". */
+export function ItemRow({ item, was, onOpen }: { item: Item; was?: string; onOpen: (item: Item) => void }) {
   const sub = [item.location, item.kind === "contractor" && item.dueAt ? `due ${item.dueAt}` : null, time(item.createdAt)]
     .filter(Boolean)
     .join(" · ");
@@ -17,12 +18,14 @@ export function ItemRow({ item, onOpen }: { item: Item; onOpen: (item: Item) => 
           <span className="line-clamp-2 font-medium leading-snug sm:line-clamp-1">{item.summary}</span>
           <span className="mt-0.5 block truncate text-sm text-muted-foreground">
             {sub}
-            {item.corrected && <span className="text-si-neutral"> · corrected</span>}
           </span>
         </span>
-        <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
+        <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-start">
           {item.managerDecides && <NeedsYourCall />}
-          <UrgencyChip urgency={item.urgency} />
+          <span className="flex flex-col items-end gap-0.5">
+            <UrgencyChip urgency={item.urgency} />
+            {was && <span className="text-xs text-muted-foreground">was {was}</span>}
+          </span>
         </span>
       </button>
     </li>

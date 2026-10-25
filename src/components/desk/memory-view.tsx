@@ -1,53 +1,105 @@
 "use client";
 
 import { useState } from "react";
-import { BookMarked, Loader2, Plus } from "lucide-react";
+import { BookMarked, ChevronRight, Loader2, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { desk, useActivity, useFacts, useShiftId } from "@/lib/desk/api";
-import { dayTime } from "@/lib/desk/labels";
+import { factVersions } from "@/lib/desk/history";
+import { dayTime, time } from "@/lib/desk/labels";
 import type { Fact } from "@/lib/desk/types";
 import { cn } from "@/lib/utils";
 import { DeskCard, Empty, PageTitle } from "./card";
+import { KeyValueCard, SwapIcon } from "./chips";
 import { LiveDot } from "./live-dot";
 
 const sourceLabel = (f: Fact) => (f.source === "seed" ? "Set up with the building" : "Added by the manager");
 
-function FactRow({ fact, byId, onReplace }: { fact: Fact; byId: Map<string, Fact>; onReplace?: (f: Fact) => void }) {
-  const replaced = fact.status === "replaced";
-  const successor = fact.replacedBy ? byId.get(fact.replacedBy) : undefined;
-  const predecessor = [...byId.values()].find((f) => f.replacedBy === fact.id);
+function FactRow({ fact, was, onOpen }: { fact: Fact; was?: Fact; onOpen: (f: Fact) => void }) {
   return (
-    <li id={fact.id} className="flex scroll-mt-20 gap-3 py-3 target:rounded-2xl target:bg-si-marker/30">
-      <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-full", replaced ? "bg-si-tint text-muted-foreground" : "bg-si-neutral/10 text-si-neutral")}>
-        <BookMarked className="size-[18px]" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className={cn("leading-snug", replaced ? "text-muted-foreground line-through decoration-si-red/60" : "font-medium")}>{fact.text}</p>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          {sourceLabel(fact)} · {dayTime(fact.createdAt)}
-        </p>
-        {replaced && successor && (
-          <p className="mt-1 text-sm">
-            <span className="text-muted-foreground">Replaced by </span>
-            <a href={`#${successor.id}`} className="font-medium underline decoration-si-marker decoration-2 underline-offset-2">{successor.text}</a>
-          </p>
+    <li>
+      <button
+        onClick={() => onOpen(fact)}
+        className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-2xl px-2 py-2.5 text-left hover:bg-si-page"
+      >
+        {was ? (
+          <SwapIcon />
+        ) : (
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-si-tint text-si-neutral">
+            <BookMarked className="size-[18px]" />
+          </span>
         )}
-        {!replaced && predecessor && (
-          <p className="mt-1 text-sm">
-            <span className="text-muted-foreground">Replaces </span>
-            <a href={`#${predecessor.id}`} className="text-muted-foreground line-through decoration-si-red/60">{predecessor.text}</a>
-          </p>
-        )}
-      </div>
-      {onReplace && (
-        <Button variant="secondary" size="sm" className="shrink-0 rounded-full" onClick={() => onReplace(fact)}>
-          Replace
-        </Button>
-      )}
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium leading-snug">{fact.text}</span>
+          <span className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
+            {was ? `Updated ${time(fact.createdAt)} · was: ${was.text}` : `${sourceLabel(fact)} · ${dayTime(fact.createdAt)}`}
+          </span>
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+      </button>
     </li>
+  );
+}
+
+function FactSheet({ fact, all, onClose, onUpdate }: { fact: Fact | null; all: Fact[]; onClose: () => void; onUpdate: (f: Fact) => void }) {
+  const [showEarlier, setShowEarlier] = useState(false);
+  const versions = fact ? factVersions(fact, all) : [];
+  return (
+    <Sheet open={!!fact} onOpenChange={(v) => { if (!v) { onClose(); setShowEarlier(false); } }}>
+      <SheetContent side="right" className="w-full gap-0 overflow-y-auto border-0 bg-background p-0 sm:max-w-[460px]">
+        {fact && (
+          <>
+            <SheetHeader className="gap-3 px-5 pt-6 pb-4">
+              {versions.length ? <SwapIcon className="size-12" /> : (
+                <span className="flex size-12 items-center justify-center rounded-full bg-si-tint text-si-neutral"><BookMarked className="size-5" /></span>
+              )}
+              <SheetTitle className="pr-8 text-xl leading-snug font-semibold">{fact.text}</SheetTitle>
+              <SheetDescription>Spring It reads this on every report.</SheetDescription>
+            </SheetHeader>
+            <div className="flex flex-col gap-3 px-3 pb-6 sm:px-4">
+              <KeyValueCard
+                rows={[
+                  { label: "Status", value: "In use" },
+                  { label: "Source", value: sourceLabel(fact) },
+                  { label: versions.length ? "Updated" : "Added", value: dayTime(fact.createdAt) },
+                  ...(versions[0] ? [{ label: "Previous", value: versions[0].text }] : []),
+                ]}
+              />
+              <Button className="h-11 rounded-full" onClick={() => onUpdate(fact)}>Update fact</Button>
+              {versions.length > 0 && (
+                <section className="flex flex-col gap-2">
+                  <h3 className="px-2 pt-2 text-sm font-medium text-muted-foreground">Earlier</h3>
+                  <button
+                    onClick={() => setShowEarlier((v) => !v)}
+                    aria-expanded={showEarlier}
+                    className="flex items-center justify-between rounded-3xl bg-card px-5 py-4 text-left font-medium"
+                  >
+                    Previous versions
+                    <span className="flex items-center gap-1 text-sm font-normal text-muted-foreground">
+                      {versions.length}
+                      <ChevronRight className={cn("size-4 transition-transform", showEarlier && "rotate-90")} />
+                    </span>
+                  </button>
+                  {showEarlier && versions.map((v) => (
+                    <KeyValueCard
+                      key={v.id}
+                      rows={[
+                        { label: "Fact", value: v.text },
+                        { label: "Source", value: sourceLabel(v) },
+                        { label: "Added", value: dayTime(v.createdAt) },
+                      ]}
+                    />
+                  ))}
+                </section>
+              )}
+            </div>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -55,17 +107,17 @@ export function MemoryView() {
   const facts = useFacts();
   const activity = useActivity(50);
   const shiftId = useShiftId(activity.data?.activity);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ fact: Fact | null } | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const all = facts.data?.facts ?? [];
-  const byId = new Map(all.map((f) => [f.id, f]));
   const active = all.filter((f) => f.status === "active").reverse();
-  const replaced = all.filter((f) => f.status === "replaced").reverse();
+  const opened = openId ? all.find((f) => f.id === openId) ?? null : null;
 
-  function open(fact: Fact | null) {
+  function edit(fact: Fact | null) {
     setText("");
     setError(null);
     setEditing({ fact });
@@ -76,8 +128,12 @@ export function MemoryView() {
     setBusy(true);
     setError(null);
     try {
-      if (editing.fact) await desk.replaceFact(editing.fact.id, text.trim(), shiftId ?? "");
-      else await desk.addFact(text.trim(), shiftId ?? "");
+      if (editing.fact) {
+        const r = await desk.replaceFact(editing.fact.id, text.trim(), shiftId ?? "");
+        if (openId) setOpenId(r.fact.id); // follow the fact to its new version
+      } else {
+        await desk.addFact(text.trim(), shiftId ?? "");
+      }
       setEditing(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save.");
@@ -90,12 +146,12 @@ export function MemoryView() {
     <div className="flex flex-col gap-4">
       <PageTitle
         title="Memory"
-        sub={<>What Spring It knows about Spring Court. Read on every report. Nothing is deleted. <LiveDot error={!!facts.error} /></>}
+        sub={<>What Spring It knows about Spring Court. Updated facts keep their earlier versions. <LiveDot error={!!facts.error} /></>}
       />
       <DeskCard
-        label="In use"
+        label="Facts in use"
         action={
-          <Button size="sm" className="rounded-full" onClick={() => open(null)}>
+          <Button size="sm" className="rounded-full" onClick={() => edit(null)}>
             <Plus />Add fact
           </Button>
         }
@@ -107,29 +163,24 @@ export function MemoryView() {
         ) : active.length === 0 ? (
           <Empty title="No facts yet">Facts come from corrections, or add one here.</Empty>
         ) : (
-          <ul className="divide-y divide-border">
-            {active.map((f) => <FactRow key={f.id} fact={f} byId={byId} onReplace={(x) => open(x)} />)}
+          <ul className="flex flex-col">
+            {active.map((f) => (
+              <FactRow key={f.id} fact={f} was={all.find((x) => x.replacedBy === f.id)} onOpen={(x) => setOpenId(x.id)} />
+            ))}
           </ul>
         )}
       </DeskCard>
-      {replaced.length > 0 && (
-        <DeskCard label="Replaced, kept for the record">
-          <ul className="divide-y divide-border">
-            {replaced.map((f) => <FactRow key={f.id} fact={f} byId={byId} />)}
-          </ul>
-        </DeskCard>
-      )}
+
+      <FactSheet fact={opened} all={all} onClose={() => setOpenId(null)} onUpdate={(f) => edit(f)} />
 
       <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
         <DialogContent className="rounded-3xl border-0">
           <DialogHeader>
-            <DialogTitle>{editing?.fact ? "Replace fact" : "Add fact"}</DialogTitle>
+            <DialogTitle>{editing?.fact ? "Update fact" : "Add fact"}</DialogTitle>
             <DialogDescription>
-              {editing?.fact ? (
-                <>The old fact stays in memory, struck through, linked to the new one: <s>{editing.fact.text}</s></>
-              ) : (
-                "Something about Spring Court that Spring It should use on every report."
-              )}
+              {editing?.fact
+                ? `Currently: ${editing.fact.text}. The current wording is kept under Earlier.`
+                : "Something about Spring Court that Spring It should use on every report."}
             </DialogDescription>
           </DialogHeader>
           <Textarea
@@ -144,7 +195,7 @@ export function MemoryView() {
             <Button variant="ghost" className="rounded-full" onClick={() => setEditing(null)}>Cancel</Button>
             <Button className="rounded-full" disabled={busy || !text.trim()} onClick={save}>
               {busy && <Loader2 className="animate-spin" />}
-              {editing?.fact ? "Replace" : "Save fact"}
+              {editing?.fact ? "Update" : "Save fact"}
             </Button>
           </DialogFooter>
         </DialogContent>
