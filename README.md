@@ -4,6 +4,12 @@
 
 Built at Night Shift London (Mubit hackathon), 24–25 Oct 2026.
 
+## A real use case
+
+This comes straight from the Spring It product, and from six years of front-desk experience in London residential buildings. A night shift lives on the radio, and every building has its own rules that nobody writes down: which door is a fire door, which gate is locked this week, what the day manager wants to decide personally. Today that knowledge sits in people's heads and in binders, and it walks out at every shift change.
+
+## What it does
+
 Night teams in residential buildings report problems over the radio: a door propped open, a leak, a resident locked out. Those reports end up as scribbled notes, and nothing teaches the system that, in *this* building, the bin store door is a fire door on the escape route. Spring It logs each report as a structured open item. When a manager corrects an item, the correction becomes building memory, so the next report is handled correctly. Every model call goes through Mubit, which uses those right answers to train this building's own model.
 
 ## The loop
@@ -31,7 +37,8 @@ radio call ──► transcript ──► POST /api/report ──► one model c
 3. **Correction → building memory.** On the manager's desk, a correction saves the before and after and adds a fact, e.g. "Bin store door = fire door on the escape route".
 4. **Memory → the next answer.** Every later call includes the building's active facts and past corrections. A report about the "refuse room door on level minus one" now comes back as fire safety, urgent, manager decides.
 5. **Mubit → this building's model.** The system prompt, tools and output schema never change (`src/lib/agent/fingerprint.ts`), so every call lands in one Mubit task ("Spring It 3"). Mubit keeps the correct answers as training examples. Training starts once a task has 25 kept examples, and each new adapter version appears in the Mubit console.
-6. **Rules change, nothing is lost.** Facts are never deleted. A replaced fact is kept and linked to the fact that replaced it. At the end of the shift, "End of shift, hand over" moves every open item to the day manager, who accepts it.
+6. **The building's own procedures.** Redacted standard operating procedures are loaded as building facts, and 71 training reports based on them have gone through the same Mubit task (72 were sent; 1 failed with a 502).
+7. **Rules change, nothing is lost.** Facts are never deleted. A replaced fact is kept and linked to the fact that replaced it. At the end of the shift, "End of shift, hand over" moves every open item to the day manager, who accepts it.
 
 ## One model per building
 
