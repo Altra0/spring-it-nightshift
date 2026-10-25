@@ -42,9 +42,9 @@ export function ItemIcon({ item, className, iconClassName }: { item: Pick<Item, 
 }
 
 /** Revolut-style white key-value card: label left, bold value right, grey previous value underneath. */
-export function KeyValueCard({ rows }: { rows: { label: string; value: React.ReactNode; was?: React.ReactNode }[] }) {
+export function KeyValueCard({ rows, className }: { rows: { label: string; value: React.ReactNode; was?: React.ReactNode }[]; className?: string }) {
   return (
-    <dl className="divide-y divide-border rounded-3xl bg-card px-5">
+    <dl className={cn("divide-y divide-border rounded-3xl bg-card px-5", className)}>
       {rows.map((r) => (
         <div key={r.label} className="flex items-start justify-between gap-4 py-3.5">
           <dt className="text-sm text-muted-foreground">{r.label}</dt>
