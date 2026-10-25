@@ -38,6 +38,9 @@ type Fact = {
 
 -> `{ item: Item | null, reply: string, action: "logReport" | "scheduleContractor" | "addHandoverItem" | "handOver", handover?: { items: Item[], accepted: boolean, to: string } }`
 
+`action` can also be `"handOverBlocked"`: the model chose handOver but the report text
+doesn't say "hand over" / "end of shift", so nothing moved (logged as `handover.blocked`).
+
 `reply` is one short radio-style sentence for the radio page to speak. `item` is
 null only for `handOver` (spoken "End of shift, hand over."), which then fills `handover`.
 

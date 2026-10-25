@@ -12,6 +12,8 @@ import { SYSTEM_PROMPT, buildUserMessage } from "./prompt";
 import { TASK_FINGERPRINT } from "./fingerprint";
 import { AGENT_TOOLS, addHandoverItemInput, handOverInput, logReportInput, scheduleContractorInput } from "./tools";
 
+const HANDOVER_INTENT = /\bhand(ing)?[\s-]?over\b|\bend of (the |my |our )?shift\b/i;
+
 export type ReportInput = { text: string; shiftId: string; source: "radio" | "text" };
 export type ReportResult = {
   item: Item | null;
@@ -105,6 +107,12 @@ export async function handleReport(input: ReportInput): Promise<ReportResult> {
     }
     case "handOver": {
       const a = handOverInput.parse(call.input);
+      // Handover moves every open item, so it needs the words, not just the model's
+      // reading of a noisy transcript. Server-side guard: prompt and tools stay frozen.
+      if (!HANDOVER_INTENT.test(input.text)) {
+        await logActivity("handover.blocked", { reportId: report.id, text: input.text }, input.shiftId);
+        return { item: null, reply: "Not handed over. Say end of shift, hand over, when you're ready.", action: "handOverBlocked" };
+      }
       const handover = await handOver(input.shiftId);
       return { item: null, reply: a.reply, action: "handOver", handover };
     }

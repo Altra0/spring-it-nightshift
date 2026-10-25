@@ -11,6 +11,7 @@ export type ActivityType =
   | "fact.restored"
   | "contractor.scheduled"
   | "handover.completed"
+  | "handover.blocked"
   | "model.called"
   | "mubit.step_outcome";
 
