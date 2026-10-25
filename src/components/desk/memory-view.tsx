@@ -158,7 +158,7 @@ export function MemoryView() {
       >
         {facts.isLoading ? (
           <div className="space-y-3 py-2"><Skeleton className="h-10" /><Skeleton className="h-10" /></div>
-        ) : facts.error ? (
+        ) : facts.error && !facts.data ? (
           <Empty title="Can't reach Spring It">{facts.error.message}. Retrying every few seconds.</Empty>
         ) : active.length === 0 ? (
           <Empty title="No facts yet">Facts come from corrections, or add one here.</Empty>

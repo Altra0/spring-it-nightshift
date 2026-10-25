@@ -38,7 +38,7 @@ export function CorrectionsView() {
       <DeskCard label="Your corrections">
         {corrections.isLoading ? (
           <div className="space-y-3 py-2"><Skeleton className="h-12" /><Skeleton className="h-12" /></div>
-        ) : corrections.error ? (
+        ) : corrections.error && !corrections.data ? (
           <Empty title="Can't reach Spring It">{corrections.error.message}. Retrying every few seconds.</Empty>
         ) : rows.length === 0 ? (
           <Empty title="No corrections yet">Open an item on Home and use Correct.</Empty>

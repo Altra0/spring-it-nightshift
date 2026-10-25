@@ -39,7 +39,7 @@ export function HomeView() {
         {items.isLoading ? (
           <Skeleton className="mx-auto mt-3 h-14 w-20 rounded-xl" />
         ) : (
-          <div className="mt-2 text-6xl font-semibold tracking-tight tabular-nums">{items.error ? "–" : open.length}</div>
+          <div className="mt-2 text-6xl font-semibold tracking-tight tabular-nums">{items.error && !items.data ? "–" : open.length}</div>
         )}
         <div className="mt-1 text-sm text-muted-foreground">
           {open.length === 1 ? "open item" : "open items"} · {shiftId ? `${shiftLabel(shiftId)} · ` : ""}Night shift, 7pm to 7am
@@ -70,7 +70,7 @@ export function HomeView() {
               </div>
             ))}
           </div>
-        ) : items.error ? (
+        ) : items.error && !items.data ? (
           <Empty title="Can't reach Spring It">{items.error.message}. Retrying every few seconds.</Empty>
         ) : rows.length === 0 ? (
           <Empty title={tab === "handed_over" ? "Nothing handed over yet" : tab === "call" ? "Nothing needs your call" : "No open items"}>
