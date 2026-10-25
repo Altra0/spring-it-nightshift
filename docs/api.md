@@ -49,7 +49,7 @@ null only for `handOver` (spoken "End of shift, hand over."), which then fills `
 
 `before`/`after` are `{ category, urgency, managerDecides }`. `fact` becomes
 building memory used on every later call. `mubitAccepted` is the Mubit control
-API result (null = not sent or unreachable).
+API result (null = not sent; off by default since that route 404s).
 
 ### `GET /api/facts` (active only), `GET /api/facts?all=1` (with replaced)
 -> `{ facts: Fact[] }`

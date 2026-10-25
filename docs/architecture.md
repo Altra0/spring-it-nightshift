@@ -12,7 +12,7 @@ src/
   lib/agent/tools.ts     FROZEN tool set: logReport, scheduleContractor, addHandoverItem, handOver.
   lib/agent/model.ts     Mubit provider (Anthropic style by default), or offline stub.
   lib/agent/run.ts       handleReport: one model call, dispatch the tool call.
-  lib/agent/mubit-control.ts  Best-effort POST /v2/control/step_outcome on each correction.
+  lib/agent/mubit-control.ts  Opt-in (MUBIT_CONTROL=on) POST /v2/control/step_outcome; 404 on api.mubit.ai as of 25 Oct.
   lib/services/          items (correctItem, handOver), facts (getBuildingFacts, replaceFact), activity, shifts.
 scripts/demo.ts          End-to-end demo story with PASS/FAIL checks.
 ```
@@ -32,8 +32,8 @@ gives exactly one call shape per report.
 2. The call goes to `https://api.mubit.ai/anthropic/v1/messages` with the Mubit key and
    `metadata.user_id = shiftId` (Mubit's session on the Anthropic route; on the OpenAI
    route it is `metadata.session_id`).
-3. Manager corrects an item: before/after saved in `corrections`, the fact saved in
-   `facts`, and a step outcome sent to Mubit's control API.
+3. Manager corrects an item: before/after saved in `corrections`, and the fact saved in
+   `facts`. (Mubit's control API step outcome is off by default: it 404s for our key.)
 4. Next report reads the fact, answers right. Mubit keeps those right answers as
    examples; at 25 kept examples it trains an adapter (max 3 starts per UTC day),
    visible under Adapters > History in the console.

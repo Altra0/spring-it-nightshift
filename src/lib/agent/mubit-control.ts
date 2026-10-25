@@ -3,8 +3,9 @@ import { logActivity } from "@/lib/services/activity";
 
 // Best effort: the inference middleware has no correction API, so the main
 // learning loop is correction -> fact -> next call answers right -> Mubit trains.
-// On top of that we send Mubit's control-plane step outcome for each correction.
-// Returns accepted, or null when skipped or unreachable.
+// The older control-plane step outcome is opt-in (MUBIT_CONTROL=on): on 25 Oct
+// POST api.mubit.ai/v2/control/step_outcome returned 404 for our key, and the
+// docs give no host for it. Returns accepted, or null when skipped or unreachable.
 export async function recordCorrectionWithMubit(args: {
   item: Item;
   before: Record<string, unknown>;
@@ -13,7 +14,7 @@ export async function recordCorrectionWithMubit(args: {
   correctionId: string;
 }): Promise<boolean | null> {
   const key = process.env.MUBIT_API_KEY;
-  if (!key || process.env.MUBIT_CONTROL === "off" || process.env.LLM_MODE === "stub") return null;
+  if (!key || process.env.MUBIT_CONTROL !== "on" || process.env.LLM_MODE === "stub") return null;
   const base = process.env.MUBIT_CONTROL_URL ?? "https://api.mubit.ai";
   const changed = Object.keys(args.after).filter((k) => args.after[k] !== args.before[k]);
   const body = {

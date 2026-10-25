@@ -44,7 +44,7 @@ async function main() {
   });
   check("correction saved a fact", !!c.fact?.id, c);
   console.log(`  corrected: ${JSON.stringify(c.correction.before)} -> ${JSON.stringify(c.correction.after)}`);
-  console.log(`  mubit step_outcome accepted: ${c.correction.mubitAccepted}`);
+  console.log(`  mubit step_outcome: ${c.correction.mubitAccepted === null ? "not sent (MUBIT_CONTROL off)" : `accepted=${c.correction.mubitAccepted}`}`);
 
   console.log("\n2. It remembers, under another name.");
   const r2 = await report("Refuse room door on level minus one, wedged open with a bin.");
