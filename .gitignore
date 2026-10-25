@@ -43,3 +43,14 @@ next-env.d.ts
 # local
 .env*.local
 .data/
+
+# SOP data is confidential and lives outside this repo (~/Private/spring-it-sop-work).
+# Guard against it ever being copied in.
+*sop-work*/
+/private/
+/sop/
+/redacted/
+*.sop.md
+*SOP*.zip
+*CamScanner*
+mapping.json
