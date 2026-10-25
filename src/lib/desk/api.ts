@@ -37,8 +37,8 @@ export function useFacts() {
 export function useCorrections() {
   return useSWR<{ corrections: Correction[] }>("/api/corrections", fetcher, poll);
 }
-export function useActivity(limit = 200) {
-  return useSWR<{ activity: Activity[] }>(`/api/activity?limit=${limit}`, fetcher, poll);
+export function useActivity(limit = 200, enabled = true) {
+  return useSWR<{ activity: Activity[] }>(enabled ? `/api/activity?limit=${limit}` : null, fetcher, poll);
 }
 
 /** After any write, refresh every desk view at once. */
@@ -83,3 +83,16 @@ export function useToday() {
   return useSyncExternalStore(noop, todayKey, () => null);
 }
 export { londonDay };
+
+export type ReplayAnswer = {
+  tool: string; category: string | null; urgency: string | null; managerDecides: boolean | null;
+  reply: string; model: string; factsUsed: number;
+};
+export type Replay = { text: string; before: ReplayAnswer; after: ReplayAnswer };
+
+export function useStats() {
+  return useSWR<{ modelCalls: number; model: string; task: string }>("/api/stats", fetcher, { ...poll, shouldRetryOnError: false });
+}
+
+/** Runs the corrected report again with memory as it was, and memory now. */
+export const replay = (correctionId: string) => request<Replay>("/api/replay", { correctionId });

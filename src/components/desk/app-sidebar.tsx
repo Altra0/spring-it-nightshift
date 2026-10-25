@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Activity, Brain, Building2, CalendarDays, HardHat, History, House, Radio, Settings, Users,
+  Activity, Brain, Building2, Cpu, CalendarDays, HardHat, History, House, Radio, Settings, Users,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader,
@@ -16,6 +16,7 @@ const DESK = [
   { href: "/", label: "Home", icon: House },
   { href: "/radio", label: "Radio", icon: Radio },
   { href: "/memory", label: "Memory", icon: Brain },
+  { href: "/model", label: "This building's model", icon: Cpu },
   { href: "/rotas", label: "Rotas", icon: CalendarDays },
   { href: "/buildings", label: "Buildings", icon: Building2 },
   { href: "/team", label: "Team", icon: Users },
