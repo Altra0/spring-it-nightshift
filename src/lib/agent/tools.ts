@@ -3,6 +3,8 @@ import { z } from "zod";
 
 // FROZEN for the same reason as SYSTEM_PROMPT: tool names, descriptions and
 // schemas are part of Mubit's task key. Tools have no execute; run.ts dispatches.
+// Last change: 25 Oct 2026 06:00, added logReport.title (Ese approved). Frozen
+// from then until the end of the hackathon; TASK_FINGERPRINT must not change.
 export const CATEGORIES = [
   "fire_safety",
   "security",
@@ -17,6 +19,9 @@ export const CATEGORIES = [
 export const URGENCIES = ["low", "normal", "urgent"] as const;
 
 export const logReportInput = z.object({
+  title: z
+    .string()
+    .describe("Short title for the item list, at most 6 words, in your own words, e.g. 'Fire door propped open'. Never the radio wording."),
   summary: z.string().describe("One line, what happened, in plain words."),
   category: z.enum(CATEGORIES),
   location: z.string().nullable().describe("A name from LOCATIONS, or null."),

@@ -25,7 +25,7 @@ async function api<T = any>(path: string, body?: unknown): Promise<T> {
 async function report(text: string) {
   const r = await api("/api/report", { text, shiftId: SHIFT, source: "radio" });
   console.log(`\n> ${text}\n< ${r.reply}`);
-  if (r.item) console.log(`  item: ${r.item.category} / ${r.item.urgency} / managerDecides=${r.item.managerDecides} @ ${r.item.location}`);
+  if (r.item) console.log(`  title: ${r.item.title}\n  item: ${r.item.category} / ${r.item.urgency} / managerDecides=${r.item.managerDecides} @ ${r.item.location}`);
   return r;
 }
 
@@ -36,6 +36,7 @@ async function main() {
   console.log("\n1. It doesn't know. One correction.");
   const r1 = await report("Concierge to base. Bin store door's propped open again.");
   check("report logged as an item", !!r1.item, r1);
+  check("title is short (<= 6 words)", (r1.item?.title ?? "").split(/\s+/).length <= 6, r1.item?.title);
   const c = await api(`/api/items/${r1.item.id}/correct`, {
     category: "fire_safety",
     urgency: "urgent",
@@ -72,7 +73,10 @@ async function main() {
 
   const { activity } = await api("/api/activity");
   const models = new Set(activity.filter((a: any) => a.type === "model.called").map((a: any) => a.payload.model));
+  const tasks = new Set(activity.filter((a: any) => a.type === "model.called").map((a: any) => a.payload.task));
   console.log(`\nmodel(s) used: ${[...models].join(", ")}`);
+  console.log(`task fingerprint(s): ${[...tasks].join(", ")}`);
+  check("one task fingerprint across all calls", tasks.size === 1, [...tasks]);
   console.log(failures ? `\n${failures} check(s) failed` : "\nAll checks passed");
   process.exit(failures ? 1 : 0);
 }

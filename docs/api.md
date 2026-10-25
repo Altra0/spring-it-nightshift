@@ -14,7 +14,7 @@ type Urgency = "low" | "normal" | "urgent";
 type Item = {
   id: string; shiftId: string; reportId: string | null;
   kind: "report" | "contractor" | "note";
-  title: string;             // short list title ("Fire door propped open"); use for rows
+  title: string;             // short list title, <= ~6 words, written by the model ("Fire door propped open"); use for rows
   summary: string;           // one line in Spring It's words; the radio quote is the report's rawText
   category: Category; location: string | null;
   urgency: Urgency; managerDecides: boolean;
@@ -73,7 +73,7 @@ The old fact is kept with `status: "replaced"` and `replacedBy` = new id.
 -> `{ activity: { seq, at, shiftId, type, payload }[] }` newest first. Types:
 `report.received`, `model.called`, `item.created`, `item.corrected`, `fact.created`,
 `fact.replaced`, `items.closed`, `contractor.scheduled`, `handover.completed`, `mubit.step_outcome`.
-`model.called` payload carries `model`, `tool`, `input`, `factsUsed`, `correctionsUsed`, `ms`.
+`model.called` payload carries `model`, `task` (fingerprint of prompt + tools; must stay constant), `tool`, `input`, `factsUsed`, `correctionsUsed`, `ms`.
 
 ### `GET /api/corrections`
 -> `{ corrections: Correction[] }` newest first, for the "before / after" screen.
