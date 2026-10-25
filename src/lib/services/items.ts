@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
 import type { Item } from "@/db/schema";
 import { DAY_MANAGER } from "@/db/seed";
@@ -93,13 +93,14 @@ export async function correctItem(id: string, input: CorrectionInput) {
 }
 
 /** Past corrections with the report text they fixed, for the user message. */
-export async function listCorrectionsWithReports(limit = 20) {
+export async function listCorrectionsWithReports(limit = 20, before?: Date) {
   const db = await getDb();
   const rows = await db
     .select({ c: schema.corrections, report: schema.reports.rawText, summary: schema.items.summary })
     .from(schema.corrections)
     .innerJoin(schema.items, eq(schema.items.id, schema.corrections.itemId))
     .leftJoin(schema.reports, eq(schema.reports.id, schema.items.reportId))
+    .where(before ? lt(schema.corrections.createdAt, before) : undefined)
     .orderBy(desc(schema.corrections.createdAt))
     .limit(limit);
   return rows.reverse().map((r) => ({

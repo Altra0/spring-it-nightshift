@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { bad } from "@/lib/http";
+import { bad, devToolsAllowed } from "@/lib/http";
 
 // Rehearsal helper: wipes everything and re-seeds. Off in production unless ALLOW_RESET=1.
 // { keepFacts: true } keeps standalone manager facts (POST /api/facts, e.g. the SOP set)
 // and drops only demo state: items, reports, corrections, activity, shifts, facts that
 // came from a correction or a replace, and the seed (re-created fresh).
 export async function POST(req: Request) {
-  if (process.env.NODE_ENV === "production" && process.env.ALLOW_RESET !== "1") return bad("reset disabled", 403);
+  if (!devToolsAllowed()) return bad("reset disabled", 403);
   const body = (await req.json().catch(() => ({}))) as { keepFacts?: boolean };
   const db = await getDb();
   if (body.keepFacts) {

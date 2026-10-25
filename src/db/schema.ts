@@ -77,6 +77,17 @@ export const activity = pgTable("activity", {
   payload: jsonb("payload").notNull(),
 });
 
+// One row per model call for this building. Survives the keep-facts demo reset so the
+// "calls sent to Mubit" count stays honest.
+export const modelCalls = pgTable("model_calls", {
+  seq: integer("seq").primaryKey().generatedAlwaysAsIdentity(),
+  at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  shiftId: text("shift_id"),
+  task: text("task").notNull(),
+  model: text("model").notNull(),
+  replay: boolean("replay").notNull().default(false),
+});
+
 export type Item = typeof items.$inferSelect;
 export type Fact = typeof facts.$inferSelect;
 export type Correction = typeof corrections.$inferSelect;

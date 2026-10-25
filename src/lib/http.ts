@@ -16,3 +16,10 @@ export function serverError(err: unknown) {
   console.error(err);
   return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 502 });
 }
+
+/** Dev helpers (reset, close-shift, restore-fact) never run on the live Vercel site.
+ *  A local production build can opt in with ALLOW_RESET=1. */
+export function devToolsAllowed(): boolean {
+  if (process.env.VERCEL_ENV === "production") return false;
+  return process.env.NODE_ENV !== "production" || process.env.ALLOW_RESET === "1";
+}

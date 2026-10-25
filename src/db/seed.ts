@@ -2,6 +2,7 @@
 // The data/seed stream can extend this; keep the ids stable.
 export const BUILDING_ID = "bld_spring_court";
 export const DAY_MANAGER = "Datte Bayo";
+export const MANAGER_ON_DUTY = "Ese";
 
 export const SEED = {
   building: { id: BUILDING_ID, name: "Spring Court" },

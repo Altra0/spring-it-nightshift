@@ -8,7 +8,7 @@ import { createItem, handOver, listCorrectionsWithReports } from "@/lib/services
 import { ensureShift } from "@/lib/services/shifts";
 import type { Item } from "@/db/schema";
 import { getModel } from "./model";
-import { SYSTEM_PROMPT, buildUserMessage } from "./prompt";
+import { SYSTEM_PROMPT, buildUserMessage, type PromptContext } from "./prompt";
 import { TASK_FINGERPRINT } from "./fingerprint";
 import { AGENT_TOOLS, addHandoverItemInput, handOverInput, logReportInput, scheduleContractorInput } from "./tools";
 
@@ -22,6 +22,53 @@ export type ReportResult = {
   handover?: { items: Item[]; accepted: boolean; to: string };
 };
 
+type Memory = {
+  facts: { id: string; text: string }[];
+  locations: { name: string; aliases: string }[];
+  corrections: PromptContext["corrections"];
+};
+
+/** One model call through Mubit with the frozen prompt and tools; only the memory in the
+ *  user message varies. Logs model.called. Shared by reports and replays. */
+export async function classify(args: Memory & { text: string; source: string; shiftId: string; reportId?: string; replay?: boolean }) {
+  const userMessage = buildUserMessage({
+    buildingName: SEED.building.name,
+    locations: args.locations,
+    facts: args.facts,
+    corrections: args.corrections,
+    report: { text: args.text, source: args.source },
+  });
+  const { model, label, sessionOptions } = getModel();
+  const started = Date.now();
+  const result = await generateText({
+    model,
+    system: SYSTEM_PROMPT,
+    messages: [{ role: "user", content: userMessage }],
+    tools: AGENT_TOOLS,
+    toolChoice: "required",
+    providerOptions: sessionOptions(args.shiftId) as never,
+  });
+  const call = result.toolCalls[0];
+  const db = await getDb();
+  await db.insert(schema.modelCalls).values({ shiftId: args.shiftId, task: TASK_FINGERPRINT, model: label, replay: args.replay ?? false });
+  await logActivity(
+    "model.called",
+    {
+      model: label,
+      task: TASK_FINGERPRINT,
+      reportId: args.reportId ?? null,
+      replay: args.replay ?? false,
+      tool: call?.toolName ?? null,
+      input: call?.input ?? null,
+      factsUsed: args.facts.map((f) => f.id),
+      correctionsUsed: args.corrections.length,
+      ms: Date.now() - started,
+    },
+    args.shiftId,
+  );
+  return call;
+}
+
 /** logReport entry point: one report in, one model call through Mubit, one action out. */
 export async function handleReport(input: ReportInput): Promise<ReportResult> {
   const db = await getDb();
@@ -33,39 +80,7 @@ export async function handleReport(input: ReportInput): Promise<ReportResult> {
   await logActivity("report.received", { report }, input.shiftId);
 
   const [{ facts, locations }, corrections] = await Promise.all([getBuildingFacts(), listCorrectionsWithReports()]);
-  const userMessage = buildUserMessage({
-    buildingName: SEED.building.name,
-    locations,
-    facts,
-    corrections,
-    report: { text: input.text, source: input.source },
-  });
-
-  const { model, label, sessionOptions } = getModel();
-  const started = Date.now();
-  const result = await generateText({
-    model,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userMessage }],
-    tools: AGENT_TOOLS,
-    toolChoice: "required",
-    providerOptions: sessionOptions(input.shiftId) as never,
-  });
-  const call = result.toolCalls[0];
-  await logActivity(
-    "model.called",
-    {
-      model: label,
-      task: TASK_FINGERPRINT,
-      reportId: report.id,
-      tool: call?.toolName ?? null,
-      input: call?.input ?? null,
-      factsUsed: facts.map((f) => f.id),
-      correctionsUsed: corrections.length,
-      ms: Date.now() - started,
-    },
-    input.shiftId,
-  );
+  const call = await classify({ text: input.text, source: input.source, shiftId: input.shiftId, facts, locations, corrections, reportId: report.id });
   if (!call) throw new Error("model returned no tool call");
 
   const base = { shiftId: input.shiftId, reportId: report.id };

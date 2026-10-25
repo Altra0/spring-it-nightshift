@@ -110,3 +110,28 @@ through Mubit, so it never touches the classifier's training task.
 ### `POST /api/speak`
 `{ text: string }` (max 600 chars) -> `audio/mpeg` (`gpt-4o-mini-tts`, voice `ash`). 503 when no key,
 and the page falls back to the browser's own voice.
+
+## This building's model
+
+### `POST /api/replay`
+`{ correctionId: string }` -> `{ text, correction, before: Answer, after: Answer }`
+
+`Answer = { tool, title, category, urgency, managerDecides, reply, model, factsUsed }`
+(category/urgency/managerDecides/title are null when the tool isn't logReport).
+Sends the corrected item's original radio text through the same frozen prompt and
+tools twice: with memory as it was just before the correction (facts created earlier,
+not yet replaced, without the correction's own fact; earlier corrections only), and
+with memory now. Both calls land in the same Mubit task (Mubit session `replay`).
+Creates **no** items or reports, so nothing reaches the open list or a handover.
+
+### `GET /api/stats`
+-> `{ modelCalls, replayCalls, callsThisTask, model, task: "Spring It 3", fingerprint, status, consoleUrl }`
+`modelCalls` excludes replays. Counted from `model_calls`, which the keep-facts
+demo reset does not clear.
+
+### `GET /api/knowledge`
+-> `{ onboarded: { version: 1, label, factCount, at }, versions: Version[], current }`
+`Version = { version, kind: "correction" | "fact_update", text, replacedText?, itemTitle?, before?, after?, correctionId?, by: "Ese", at }`, newest first.
+v1 counts facts loaded up front (seed + standalone, e.g. the SOP set).
+
+Dev endpoints (`/api/dev/*`) always return 403 on the live Vercel site (`VERCEL_ENV=production`).
