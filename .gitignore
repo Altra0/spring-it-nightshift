@@ -54,3 +54,10 @@ next-env.d.ts
 *SOP*.zip
 *CamScanner*
 mapping.json
+
+# radio bridge (python)
+__pycache__/
+radio_rx_test.wav
+radio_report_*.wav
+radio_timeline.*
+radio_monitor_log.csv
