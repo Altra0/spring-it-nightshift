@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { itemTitle, time } from "@/lib/desk/labels";
 import type { Item } from "@/lib/desk/types";
 import { cn } from "@/lib/utils";
-import { beep, concat, meanSquare, normalise, resample, wav } from "@/lib/radio/audio";
-import { aiocOutput, defaultInput, defaultOutput, listDevices, openInput, type Devices, type InputHandle } from "@/lib/radio/input";
+import { beep, concat, levelForRadio, meanSquare, normalise, resample, wav } from "@/lib/radio/audio";
+import { aiocOutput, defaultInput, defaultOutput, isAioc, listDevices, openInput, type Devices, type InputHandle } from "@/lib/radio/input";
 import {
   TRANSMIT_LABEL, aiocConnected, aiocTransmitter, connectAioc, speakerTransmitter, webSerialSupported,
   type TransmitMode, type Transmitter,
@@ -23,6 +23,8 @@ type Mode = "hold" | "auto";
 type Settings = {
   inputId?: string; outputId?: string; aiocOutputId?: string;
   mode: Mode; transmit: TransmitMode; gainDb: number; thresholdDb: number;
+  /** Set once the AIOC levels have been applied, so later manual changes stick. */
+  aiocTuned?: boolean;
 };
 
 type Entry = {
@@ -34,15 +36,19 @@ type Entry = {
 // Levels are smoothed RMS. On the AB13X the idle line sits near -68 dB RMS and soft
 // speech peaks near -42 dBFS, so +24 dB puts idle near -44 and speech above -38.
 const DEFAULTS: Settings = { mode: "hold", transmit: "speaker", gainDb: 24, thresholdDb: -38 };
+// On the AIOC (tested 4 Nov with the ESY082) the idle hiss sits near -58 dBFS RMS and
+// close-talked speech well above -50, with no extra gain. Reports come in over the air,
+// so nobody is at the Mac to hold Space: listen automatically and reply over the radio.
+const AIOC_PROFILE: Partial<Settings> = { mode: "auto", transmit: "aioc", gainDb: 0, thresholdDb: -50, aiocTuned: true };
 const SETTINGS_KEY = "si.radio.settings";
 const FEED_KEY = "si.radio.feed";
 const FEED_MAX = 40;
 
-const PREROLL_S = 0.35; // audio kept from just before voice was detected
+const PREROLL_S = 0.5; // audio kept from just before voice was detected
 const VOICE_ON_S = 0.06; // this much loud audio starts a recording
-const SILENCE_S = 1.0; // this much quiet ends one (auto mode)
+const SILENCE_S = 1.2; // this much quiet ends one (auto mode); covers pauses between words
 const MIN_S = 0.4; // shorter recordings are dropped as clicks
-const MIN_VOICED_S = 0.3; // recordings with less voice than this are dropped as noise
+const MIN_VOICED_S = 0.5; // less voice than this is dropped: the radios' key-up/roger beeps
 const MAX_S = 30;
 const AFTER_REPLY_MS = 400; // half duplex: stay deaf briefly after speaking
 
@@ -176,9 +182,9 @@ export function RadioView() {
     }).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
     try {
       await tx.keyUp();
-      await playBlob(beep(tx.mode === "speaker" ? 0 : 150), tx.sinkId);
+      await playBlob(beep(), tx.sinkId);
       const audio = await speech;
-      if (audio) await playBlob(audio, tx.sinkId);
+      if (audio) await playBlob(tx.mode === "aioc" ? await levelForRadio(audio) : audio, tx.sinkId);
       else await speakInBrowser(text);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not play the reply.");
@@ -279,6 +285,9 @@ export function RadioView() {
     const cfg = s.current;
     const patch: Partial<Settings> = {};
     if (!list.inputs.some((d) => d.deviceId === cfg.inputId)) patch.inputId = defaultInput(list.inputs)?.deviceId;
+    // First time listening on the AIOC: switch to its levels and to transmitting over the radio.
+    const inputId = patch.inputId ?? cfg.inputId;
+    if (!cfg.aiocTuned && isAioc(list.inputs.find((d) => d.deviceId === inputId))) Object.assign(patch, AIOC_PROFILE);
     if (!list.outputs.some((d) => d.deviceId === cfg.outputId)) patch.outputId = defaultOutput(list.outputs)?.deviceId;
     if (!list.outputs.some((d) => d.deviceId === cfg.aiocOutputId)) patch.aiocOutputId = aiocOutput(list.outputs)?.deviceId;
     if (Object.keys(patch).length) update(patch);
@@ -297,6 +306,13 @@ export function RadioView() {
       if (!inputId && cfg.inputId && cfg.inputId !== s.current.inputId) {
         first.stop();
         input.current = await openInput(cfg.inputId, onChunk);
+      }
+      // Reconnect the AIOC's PTT line without a prompt if Chrome already granted the port.
+      if (cfg.transmit === "aioc" && !aiocConnected()) {
+        setAioc(await connectAioc(false).catch((err) => {
+          setError(err instanceof Error ? err.message : "Could not connect the AIOC.");
+          return false;
+        }));
       }
       setLive(true);
       go("listening");

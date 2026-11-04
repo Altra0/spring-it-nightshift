@@ -90,3 +90,28 @@ export function beep(leadMs = 0) {
   };
   return wav(concat([new Float32Array(lead), tone(988, 90), new Float32Array(rate * 0.03), tone(1319, 120)]), rate);
 }
+
+/**
+ * Level a spoken reply for the wired radio's mic input: peak-normalise to -3 dBFS, then
+ * scale by `gain`. Same as radio/bridge.py (tts_peak_db -3, output_gain 0.85), which
+ * Ese tuned by ear over the hand radio on 4 Nov. Falls back to the original audio if
+ * the browser can't decode it.
+ */
+export async function levelForRadio(audio: Blob, gain = 0.85, peakDb = -3): Promise<Blob> {
+  const ctx = new AudioContext();
+  try {
+    const buf = await ctx.decodeAudioData(await audio.arrayBuffer());
+    const mono = new Float32Array(buf.length);
+    for (let c = 0; c < buf.numberOfChannels; c++) {
+      const ch = buf.getChannelData(c);
+      for (let i = 0; i < ch.length; i++) mono[i] += ch[i] / buf.numberOfChannels;
+    }
+    const out = normalise(mono, peakDb, 12);
+    for (let i = 0; i < out.length; i++) out[i] *= gain;
+    return wav(out, buf.sampleRate);
+  } catch {
+    return audio;
+  } finally {
+    void ctx.close();
+  }
+}

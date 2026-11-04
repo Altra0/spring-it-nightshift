@@ -1,18 +1,21 @@
 # Radio page (`/radio`)
 
-Runs on the iMac in Chrome or Edge, because it needs the AB13X USB sound card.
+Runs on the iMac in Chrome or Edge, with the AIOC cable plugged in (the old AB13X card
+still works for listening only).
 
 ## Loop (half duplex)
 
-1. Listen on the input (AB13X by default). Browser echo cancellation, noise
+1. Listen on the input (the AIOC by default, else the AB13X). Browser echo cancellation, noise
    suppression and auto gain are off so the radio audio arrives untouched.
 2. Capture: hold Space or the big button, or **Auto** (starts on voice, stops after
-   about 1 s of quiet, keeps 0.35 s from before the voice started).
+   1.2 s of quiet, keeps 0.5 s from before the voice started). Captures with less
+   than 0.5 s of voice are dropped, which filters out the radios' key-up beeps.
 3. The recording is peak-normalised (the AB13X peaks near -42 dBFS on soft speech),
    resampled to 16 kHz mono WAV, and sent to `POST /api/transcribe`.
 4. The text goes to `POST /api/report {text, shiftId, source: "radio"}`.
 5. Reply: a short beep, then the reply spoken via `POST /api/speak` (browser voice
-   as fallback). Nothing is heard while replying, plus 0.4 s after.
+   as fallback). Over the AIOC the reply is levelled to a -3 dBFS peak and played at
+   0.85, the level tuned by ear on 4 Nov. Nothing is heard while replying, plus 0.4 s after.
 
 Input gain and the voice threshold only affect the meter and voice detection.
 Settings and the feed are kept in the browser (localStorage).
@@ -21,9 +24,23 @@ Settings and the feed are kept in the browser (localStorage).
 
 | Setting | What happens | When |
 |---|---|---|
-| Speaker | Reply plays on the chosen output (iMac speakers) | Now (no PTT line on the RF-K cable) |
-| Radio via AIOC | Reply plays on the AIOC sound card; PTT keyed through the AIOC serial port with Web Serial, DTR on / RTS off, the same rule as `radio/bridge.py` (PR #1) | When the AIOC arrives |
+| Speaker | Reply plays on the chosen output (iMac speakers) | Testing without a radio |
+| Radio via AIOC | Reply plays on the AIOC sound card; PTT keyed through the AIOC serial port with Web Serial, DTR on / RTS off, 0.3 s before and after the audio, the same as `radio/bridge.py` | Normal use |
 
 Swapping is a setting on the page: choose **Radio via AIOC**, press **Connect**, pick
 the AIOC port. `src/lib/radio/transmit.ts` holds the `Transmitter` interface if
 another keying method is needed.
+
+## With the AIOC
+
+The first time the page hears the AIOC it switches to **Auto**, **Radio via AIOC**,
+input gain +0 dB and a voice threshold of -50 dB. The AIOC's idle hiss sits near
+-58 dB and close-talked speech well above -50. After that, your own changes stick.
+Press **Connect** once to grant the serial port. Later starts reconnect it without asking.
+
+- Only one program can hold the AIOC's serial port, so don't run `radio/bridge.py` or
+  the monitor while this page is open. If the page says the port is busy, close any
+  other tab with the page open, hard-reload, or replug the AIOC.
+- The hand radio's mic needs close talking, about 5 cm from the mouth.
+- The ESY082's speaker-bias COS isn't used here. Capture is started by audio level,
+  so the radio holding COS on after a call doesn't matter.

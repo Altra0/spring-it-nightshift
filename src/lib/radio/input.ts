@@ -1,7 +1,7 @@
 "use client";
 
-// Microphone side of the radio page. Taps raw PCM from the chosen input (the AB13X
-// card by default) with an AudioWorklet. Browser processing is off so the radio's
+// Microphone side of the radio page. Taps raw PCM from the chosen input (the AIOC
+// by default, else the AB13X card) with an AudioWorklet. Browser processing is off so the radio's
 // audio arrives untouched; gain is applied in software for the meter and voice
 // detection, and recordings are normalised before transcription.
 
@@ -64,9 +64,17 @@ export async function listDevices(): Promise<Devices> {
 
 const has = (d: MediaDeviceInfo, ...words: string[]) => words.some((w) => d.label.toLowerCase().includes(w));
 
-/** AB13X card for input; the iMac's own speakers for output (not the USB card). */
+/** The AIOC cable (shows up as "AIOC Audio" / "All-In-One-Cable"). */
+export const isAioc = (d?: MediaDeviceInfo) => !!d && has(d, "aioc", "all-in-one");
+
+/** AIOC (or the old AB13X card) for input; the iMac's own speakers for output (not the USB card). */
 export function defaultInput(list: MediaDeviceInfo[]) {
-  return list.find((d) => has(d, "ab13x", "usb audio")) ?? list.find((d) => d.deviceId === "default") ?? list[0];
+  return (
+    list.find((d) => isAioc(d)) ??
+    list.find((d) => has(d, "ab13x", "usb audio")) ??
+    list.find((d) => d.deviceId === "default") ??
+    list[0]
+  );
 }
 export function defaultOutput(list: MediaDeviceInfo[]) {
   return (
@@ -76,5 +84,5 @@ export function defaultOutput(list: MediaDeviceInfo[]) {
   );
 }
 export function aiocOutput(list: MediaDeviceInfo[]) {
-  return list.find((d) => has(d, "all-in-one", "aioc"));
+  return list.find((d) => isAioc(d));
 }
