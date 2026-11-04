@@ -27,10 +27,17 @@ export const webHidSupported = () => typeof navigator !== "undefined" && !!hid()
 
 let device: HidDeviceLike | null = null;
 let cos = false;
+let heard = false;
 
 /** True while the wired radio is receiving. Always false when COS isn't connected. */
 export const cosOn = () => cos;
 export const cosConnected = () => !!device;
+/**
+ * COS has reported at least once. The AIOC only sends a report when COS changes, and the
+ * browser may withhold reports from some HID collections, so until one arrives the page
+ * treats COS as unknown and falls back to voice level instead of never starting.
+ */
+export const cosLive = () => heard;
 
 /** Ask for the AIOC's HID interface (needs a click unless granted before). */
 export async function connectCos(prompt = true) {
@@ -45,7 +52,9 @@ export async function connectCos(prompt = true) {
   for (const d of list) {
     if (!d.opened) await d.open();
     d.addEventListener("inputreport", (e) => {
-      if (e.data.byteLength) cos = (e.data.getUint8(0) & COS_BIT) !== 0;
+      if (!e.data.byteLength) return;
+      heard = true;
+      cos = (e.data.getUint8(0) & COS_BIT) !== 0;
     });
   }
   window.addEventListener("pagehide", () => list.forEach((d) => void d.close().catch(() => {})), { once: true });

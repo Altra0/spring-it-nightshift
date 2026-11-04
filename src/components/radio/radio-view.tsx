@@ -12,7 +12,7 @@ import type { Item } from "@/lib/desk/types";
 import { cn } from "@/lib/utils";
 import { beep, concat, levelForRadio, meanSquare, normalise, resample, wav } from "@/lib/radio/audio";
 import { aiocOutput, defaultInput, defaultOutput, isAioc, listDevices, openInput, type Devices, type InputHandle } from "@/lib/radio/input";
-import { connectCos, cosConnected, cosOn, webHidSupported } from "@/lib/radio/cos";
+import { connectCos, cosConnected, cosLive, cosOn, webHidSupported } from "@/lib/radio/cos";
 import {
   TRANSMIT_LABEL, aiocConnected, aiocTransmitter, connectAioc, speakerTransmitter, webSerialSupported,
   type TransmitMode, type Transmitter,
@@ -276,7 +276,7 @@ export function RadioView() {
       loud.current = voice ? loud.current + dur : 0;
       // Radio PTT: the radio must be receiving (COS) *and* carrying voice. COS alone isn't
       // enough, the ESY082 holds it on for seconds after a call. Without COS, use level.
-      const keyed = cfg.mode === "auto" || (cfg.mode === "cos" && (!cosConnected() || cosOn()));
+      const keyed = cfg.mode === "auto" || (cfg.mode === "cos" && (!cosLive() || cosOn()));
       if (keyed && loud.current >= VOICE_ON_S) startRecording(false);
       return;
     }
@@ -288,7 +288,7 @@ export function RadioView() {
         r.voiced += dur;
         r.quiet = 0;
       } else r.quiet += dur;
-      r.cosOff = cfg.mode === "cos" && cosConnected() && !cosOn() ? r.cosOff + dur : 0;
+      r.cosOff = cfg.mode === "cos" && cosLive() && !cosOn() ? r.cosOff + dur : 0;
       const released = r.cosOff >= COS_TAIL_S; // hand radio let go of PTT
       if ((!r.held && (r.quiet >= SILENCE_S || released)) || r.seconds >= MAX_S) stopRecording();
     }
