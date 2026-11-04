@@ -33,14 +33,27 @@ another keying method is needed.
 
 ## With the AIOC
 
-The first time the page hears the AIOC it switches to **Auto**, **Radio via AIOC**,
-input gain +0 dB and a voice threshold of -50 dB. The AIOC's idle hiss sits near
+The first time the page sees the AIOC it listens on it and switches to **Radio PTT**,
+**Radio via AIOC**, input gain +0 dB and a voice threshold of -50 dB. The AIOC's idle hiss sits near
 -58 dB and close-talked speech well above -50. After that, your own changes stick.
-Press **Connect** once to grant the serial port. Later starts reconnect it without asking.
+Press **Connect** once and grant both prompts: the AIOC's HID interface (COS, to hear the
+hand radio key up) and its serial port (PTT, to transmit). Later starts reconnect both
+without asking.
+
+Capture modes:
+
+| Mode | Starts | Ends |
+|---|---|---|
+| Radio PTT | The wired radio is receiving (AIOC COS) and voice is above the threshold | The hand radio lets go of PTT (COS off for 0.3 s), or 1.2 s without voice |
+| Voice level | Voice above the threshold | 1.2 s without voice |
+| Desk mic | Holding Space or the big button | Letting go |
+
+In Radio PTT mode COS is never used alone, because the ESY082 holds it on for seconds after
+a call. If COS isn't connected, it falls back to voice level. In Radio via AIOC mode a reply
+is never played on the Mac's speakers: if the AIOC sound card, PTT or the spoken audio is
+missing, the page shows an error.
 
 - Only one program can hold the AIOC's serial port, so don't run `radio/bridge.py` or
   the monitor while this page is open. If the page says the port is busy, close any
   other tab with the page open, hard-reload, or replug the AIOC.
 - The hand radio's mic needs close talking, about 5 cm from the mouth.
-- The ESY082's speaker-bias COS isn't used here. Capture is started by audio level,
-  so the radio holding COS on after a call doesn't matter.
