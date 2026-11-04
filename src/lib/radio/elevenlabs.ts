@@ -42,3 +42,23 @@ export async function transcribe(audio: Blob): Promise<string> {
   const json = (await res.json()) as { text?: string };
   return (json.text ?? "").trim();
 }
+
+// Text to speech for replies. Flash is ElevenLabs' low-latency model, so the reply
+// starts quickly after the report. "George" is a calm British premade voice; set
+// ELEVENLABS_VOICE_ID to use another.
+export const SPEECH_MODEL = "eleven_flash_v2_5";
+const DEFAULT_VOICE = "JBFqnCBsd6RMkjVDRZzb";
+
+export async function speak(text: string): Promise<ArrayBuffer> {
+  const voice = process.env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE;
+  const res = await fetch(`${ELEVENLABS}/text-to-speech/${voice}?output_format=mp3_44100_128`, {
+    method: "POST",
+    headers: { "xi-api-key": key(), "content-type": "application/json", accept: "audio/mpeg" },
+    body: JSON.stringify({ text, model_id: SPEECH_MODEL, language_code: "en" }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Speech failed (${res.status}): ${body.slice(0, 300)}`);
+  }
+  return res.arrayBuffer();
+}

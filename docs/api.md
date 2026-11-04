@@ -100,7 +100,7 @@ and the fact that replaced it is deleted. Same production guard as reset.
 ## Radio page (Stream C)
 
 Speech goes straight to the providers, server side: ElevenLabs (`ELEVENLABS_API_KEY`)
-for transcription, OpenAI (`OPENAI_API_KEY`) for the spoken reply. It never goes
+for transcription and the spoken reply, with OpenAI (`OPENAI_API_KEY`) as the fallback. It never goes
 through Mubit, so it never touches the classifier's training task.
 
 ### `POST /api/transcribe`
@@ -110,8 +110,10 @@ through Mubit, so it never touches the classifier's training task.
 OpenAI `gpt-4o-transcribe` when `ELEVENLABS_API_KEY` is not set. 503 when neither key is set.
 
 ### `POST /api/speak`
-`{ text: string }` (max 600 chars) -> `audio/mpeg` (`gpt-4o-mini-tts`, voice `ash`). 503 when no key,
-and the page falls back to the browser's own voice.
+`{ text: string }` (max 600 chars) -> `audio/mpeg` (ElevenLabs `eleven_flash_v2_5`, voice "George",
+or `ELEVENLABS_VOICE_ID`). Falls back to OpenAI `gpt-4o-mini-tts` (voice `ash`) when
+`ELEVENLABS_API_KEY` is not set. 503 when no key: in speaker mode the page falls back to the
+browser's own voice; over the AIOC it shows an error instead.
 
 ## This building's model
 
