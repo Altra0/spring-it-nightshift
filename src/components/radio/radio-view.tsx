@@ -12,19 +12,20 @@ import type { Item } from "@/lib/desk/types";
 import { cn } from "@/lib/utils";
 import { beep, concat, levelForRadio, meanSquare, normalise, resample, wav } from "@/lib/radio/audio";
 import { aiocOutput, defaultInput, defaultOutput, isAioc, listDevices, openInput, type Devices, type InputHandle } from "@/lib/radio/input";
+import { connectCos, cosConnected, cosOn, webHidSupported } from "@/lib/radio/cos";
 import {
   TRANSMIT_LABEL, aiocConnected, aiocTransmitter, connectAioc, speakerTransmitter, webSerialSupported,
   type TransmitMode, type Transmitter,
 } from "@/lib/radio/transmit";
 
 type Phase = "off" | "listening" | "recording" | "thinking" | "speaking";
-type Mode = "hold" | "auto";
+type Mode = "hold" | "auto" | "cos";
 
 type Settings = {
   inputId?: string; outputId?: string; aiocOutputId?: string;
   mode: Mode; transmit: TransmitMode; gainDb: number; thresholdDb: number;
-  /** Set once the AIOC levels have been applied, so later manual changes stick. */
-  aiocTuned?: boolean;
+  /** Version of the AIOC setup last applied, so later manual changes stick. */
+  aiocProfile?: number;
 };
 
 type Entry = {
@@ -39,7 +40,7 @@ const DEFAULTS: Settings = { mode: "hold", transmit: "speaker", gainDb: 24, thre
 // On the AIOC (tested 4 Nov with the ESY082) the idle hiss sits near -58 dBFS RMS and
 // close-talked speech well above -50, with no extra gain. Reports come in over the air,
 // so nobody is at the Mac to hold Space: listen automatically and reply over the radio.
-const AIOC_PROFILE: Partial<Settings> = { mode: "auto", transmit: "aioc", gainDb: 0, thresholdDb: -50, aiocTuned: true };
+const AIOC_PROFILE: Partial<Settings> = { mode: "cos", transmit: "aioc", gainDb: 0, thresholdDb: -50, aiocProfile: 2 };
 const SETTINGS_KEY = "si.radio.settings";
 const FEED_KEY = "si.radio.feed";
 const FEED_MAX = 40;
@@ -51,6 +52,13 @@ const MIN_S = 0.4; // shorter recordings are dropped as clicks
 const MIN_VOICED_S = 0.5; // less voice than this is dropped: the radios' key-up/roger beeps
 const MAX_S = 30;
 const AFTER_REPLY_MS = 400; // half duplex: stay deaf briefly after speaking
+const COS_TAIL_S = 0.3; // Radio PTT mode: COS must stay off this long (it bounces ~50 ms at release)
+
+const MODE_HINT: Record<Mode, string> = {
+  cos: "Starts when the hand radio keys up",
+  auto: "Starts when someone speaks",
+  hold: "Hold Space or the button to talk into the Mac",
+};
 
 const PHASE_LABEL: Record<Phase, string> = {
   off: "Radio off",
@@ -126,7 +134,7 @@ export function RadioView() {
   const phaseRef = useRef<Phase>("off");
   const input = useRef<InputHandle | null>(null);
   const level = useRef(-120);
-  const rec = useRef<{ chunks: Float32Array[]; seconds: number; voiced: number; quiet: number; held: boolean } | null>(null);
+  const rec = useRef<{ chunks: Float32Array[]; seconds: number; voiced: number; quiet: number; cosOff: number; held: boolean } | null>(null);
   const preroll = useRef<Float32Array[]>([]);
   const loud = useRef(0);
   const energy = useRef(0);
@@ -185,6 +193,8 @@ export function RadioView() {
       await playBlob(beep(), tx.sinkId);
       const audio = await speech;
       if (audio) await playBlob(tx.mode === "aioc" ? await levelForRadio(audio) : audio, tx.sinkId);
+      // The browser voice can only play on the Mac's default output, never into the radio.
+      else if (tx.mode === "aioc") throw new Error("Couldn't make the spoken reply, so nothing went out on the radio.");
       else await speakInBrowser(text);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not play the reply.");
@@ -234,7 +244,7 @@ export function RadioView() {
 
   const startRecording = useCallback((held: boolean) => {
     if (phaseRef.current !== "listening") return;
-    rec.current = { chunks: [...preroll.current], seconds: 0, voiced: 0, quiet: 0, held };
+    rec.current = { chunks: [...preroll.current], seconds: 0, voiced: 0, quiet: 0, cosOff: 0, held };
     preroll.current = [];
     go("recording");
   }, []);
@@ -264,7 +274,10 @@ export function RadioView() {
       let kept = preroll.current.reduce((n, c) => n + c.length, 0);
       while (kept > PREROLL_S * handle.sampleRate && preroll.current.length > 1) kept -= preroll.current.shift()!.length;
       loud.current = voice ? loud.current + dur : 0;
-      if (cfg.mode === "auto" && loud.current >= VOICE_ON_S) startRecording(false);
+      // Radio PTT: the radio must be receiving (COS) *and* carrying voice. COS alone isn't
+      // enough, the ESY082 holds it on for seconds after a call. Without COS, use level.
+      const keyed = cfg.mode === "auto" || (cfg.mode === "cos" && (!cosConnected() || cosOn()));
+      if (keyed && loud.current >= VOICE_ON_S) startRecording(false);
       return;
     }
     if (p === "recording" && rec.current) {
@@ -275,7 +288,9 @@ export function RadioView() {
         r.voiced += dur;
         r.quiet = 0;
       } else r.quiet += dur;
-      if ((!r.held && r.quiet >= SILENCE_S) || r.seconds >= MAX_S) stopRecording();
+      r.cosOff = cfg.mode === "cos" && cosConnected() && !cosOn() ? r.cosOff + dur : 0;
+      const released = r.cosOff >= COS_TAIL_S; // hand radio let go of PTT
+      if ((!r.held && (r.quiet >= SILENCE_S || released)) || r.seconds >= MAX_S) stopRecording();
     }
   }, [startRecording, stopRecording]);
 
@@ -285,11 +300,14 @@ export function RadioView() {
     const cfg = s.current;
     const patch: Partial<Settings> = {};
     if (!list.inputs.some((d) => d.deviceId === cfg.inputId)) patch.inputId = defaultInput(list.inputs)?.deviceId;
-    // First time listening on the AIOC: switch to its levels and to transmitting over the radio.
-    const inputId = patch.inputId ?? cfg.inputId;
-    if (!cfg.aiocTuned && isAioc(list.inputs.find((d) => d.deviceId === inputId))) Object.assign(patch, AIOC_PROFILE);
+    // First time the AIOC is plugged in: listen on it, use its levels and transmit over the radio,
+    // even if an older card (the AB13X) was saved as the input.
+    const aiocIn = list.inputs.find((d) => isAioc(d));
+    if ((cfg.aiocProfile ?? 0) < 2 && aiocIn) Object.assign(patch, AIOC_PROFILE, { inputId: aiocIn.deviceId });
     if (!list.outputs.some((d) => d.deviceId === cfg.outputId)) patch.outputId = defaultOutput(list.outputs)?.deviceId;
-    if (!list.outputs.some((d) => d.deviceId === cfg.aiocOutputId)) patch.aiocOutputId = aiocOutput(list.outputs)?.deviceId;
+    if (!list.outputs.some((d) => d.deviceId === cfg.aiocOutputId) || !cfg.aiocOutputId) {
+      patch.aiocOutputId = aiocOutput(list.outputs)?.deviceId;
+    }
     if (Object.keys(patch).length) update(patch);
     return { ...cfg, ...patch };
   }, []);
@@ -307,7 +325,8 @@ export function RadioView() {
         first.stop();
         input.current = await openInput(cfg.inputId, onChunk);
       }
-      // Reconnect the AIOC's PTT line without a prompt if Chrome already granted the port.
+      // Reconnect the AIOC's COS and PTT lines without a prompt if Chrome already granted them.
+      if (cfg.mode === "cos") await connectCos(false).catch(() => false);
       if (cfg.transmit === "aioc" && !aiocConnected()) {
         setAioc(await connectAioc(false).catch((err) => {
           setError(err instanceof Error ? err.message : "Could not connect the AIOC.");
@@ -407,6 +426,8 @@ export function RadioView() {
   async function pairAioc() {
     setError(null);
     try {
+      // COS first: both prompts need the click, and the serial one is the one that matters most.
+      if (webHidSupported() && !cosConnected()) await connectCos(true).catch(() => false);
       setAioc(await connectAioc(true));
       await refreshDevices();
     } catch (err) {
@@ -428,7 +449,7 @@ export function RadioView() {
           <div className="flex flex-col items-center gap-5 pt-2 text-center">
             <div>
               <p className="text-sm text-muted-foreground">
-                {settings.mode === "auto" ? "Starts when someone speaks" : "Hold Space or the button to talk"}
+                {MODE_HINT[settings.mode]}
               </p>
               <p className="mt-1 text-3xl font-semibold tracking-tight" aria-live="polite">{PHASE_LABEL[phase]}</p>
             </div>
@@ -473,7 +494,11 @@ export function RadioView() {
               <PillTabs
                 value={settings.mode}
                 onChange={(mode) => update({ mode })}
-                options={[{ value: "hold", label: "Hold to talk" }, { value: "auto", label: "Auto" }]}
+                options={[
+                  { value: "cos", label: "Radio PTT" },
+                  { value: "auto", label: "Voice level" },
+                  { value: "hold", label: "Desk mic" },
+                ]}
               />
               {on ? (
                 <Button variant="secondary" className="rounded-full" onClick={stop}>
@@ -486,6 +511,11 @@ export function RadioView() {
               )}
             </div>
 
+            {on && settings.mode === "cos" && !cosConnected() && (
+              <p className="text-sm text-muted-foreground">
+                Can&apos;t see the radio&apos;s PTT yet, so it starts on voice level. Press Connect under Radio settings.
+              </p>
+            )}
             {!aiocReady && (
               <p className="text-sm text-si-red">Transmit is set to the radio, but the AIOC isn&apos;t connected. Replies won&apos;t go out.</p>
             )}
@@ -556,7 +586,7 @@ export function RadioView() {
                     onChange={(aiocOutputId) => update({ aiocOutputId })}
                   />
                   <Button variant="secondary" className="h-10 shrink-0 rounded-xl" onClick={pairAioc} disabled={!webSerialSupported()}>
-                    {aioc || aiocConnected() ? "Connected" : "Connect"}
+                    {(aioc || aiocConnected()) && (cosConnected() || !webHidSupported()) ? "Connected" : "Connect"}
                   </Button>
                 </div>
               </Field>

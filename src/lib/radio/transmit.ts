@@ -78,7 +78,9 @@ export function aiocTransmitter(sinkId: string): Transmitter {
     mode: "aioc",
     sinkId,
     async keyUp() {
-      if (!port) throw new Error("AIOC not connected");
+      // Never fall back to the Mac's speakers: the reply has to go into the radio.
+      if (!sinkId) throw new Error("Choose the AIOC under Radio settings → AIOC sound card. The reply wasn't sent.");
+      if (!port) throw new Error("The AIOC's PTT isn't connected. Press Connect under Radio settings. The reply wasn't sent.");
       await port.setSignals({ dataTerminalReady: true, requestToSend: false });
       await wait(300); // radio needs a moment before audio, or the first word is clipped (bridge.py key_up_delay)
     },
