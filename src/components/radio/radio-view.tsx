@@ -31,10 +31,14 @@ type Entry = {
   action?: string; error?: string; pending?: boolean;
 };
 
-// Levels are smoothed RMS. On the AB13X the idle line sits near -68 dB RMS and soft
-// speech peaks near -42 dBFS, so +24 dB puts idle near -44 and speech above -38.
-const DEFAULTS: Settings = { mode: "hold", transmit: "speaker", gainDb: 24, thresholdDb: -38 };
-const SETTINGS_KEY = "si.radio.settings";
+// Levels are smoothed RMS. Over the AIOC the wired radio sits near -61 dB with squelch
+// closed and -58 with it open (hiss), and close-talked speech lands around -22 to -44,
+// so no extra gain and a -50 threshold, the same as radio/bridge.py. The hand radio's
+// key-up beep (about 0.2 s) is shorter than MIN_VOICED_S, so it's dropped.
+// (The old AB13X card needed +24 dB and -38.)
+const DEFAULTS: Settings = { mode: "auto", transmit: "aioc", gainDb: 0, thresholdDb: -50 };
+// v2: AIOC defaults. Settings saved under the old key were tuned for the AB13X.
+const SETTINGS_KEY = "si.radio.settings.v2";
 const FEED_KEY = "si.radio.feed";
 const FEED_MAX = 40;
 
@@ -71,9 +75,10 @@ function save(key: string, value: unknown) {
   } catch {}
 }
 
-async function playBlob(blob: Blob, sinkId: string) {
+async function playBlob(blob: Blob, sinkId: string, volume = 1) {
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url) as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> };
+  audio.volume = volume;
   try {
     if (sinkId && audio.setSinkId) await audio.setSinkId(sinkId);
     await new Promise<void>((resolve, reject) => {
@@ -176,9 +181,9 @@ export function RadioView() {
     }).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
     try {
       await tx.keyUp();
-      await playBlob(beep(tx.mode === "speaker" ? 0 : 150), tx.sinkId);
+      await playBlob(beep(tx.mode === "speaker" ? 0 : 150), tx.sinkId, tx.volume);
       const audio = await speech;
-      if (audio) await playBlob(audio, tx.sinkId);
+      if (audio) await playBlob(audio, tx.sinkId, tx.volume);
       else await speakInBrowser(text);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not play the reply.");

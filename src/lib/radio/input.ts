@@ -1,8 +1,8 @@
 "use client";
 
-// Microphone side of the radio page. Taps raw PCM from the chosen input (the AB13X
-// card by default) with an AudioWorklet. Browser processing is off so the radio's
-// audio arrives untouched; gain is applied in software for the meter and voice
+// Microphone side of the radio page. Taps raw PCM from the chosen input (the AIOC's
+// sound card by default, else the old AB13X) with an AudioWorklet. Browser processing
+// is off so the radio's audio arrives untouched; gain is applied in software for the meter and voice
 // detection, and recordings are normalised before transcription.
 
 const TAP = `
@@ -64,9 +64,14 @@ export async function listDevices(): Promise<Devices> {
 
 const has = (d: MediaDeviceInfo, ...words: string[]) => words.some((w) => d.label.toLowerCase().includes(w));
 
-/** AB13X card for input; the iMac's own speakers for output (not the USB card). */
+/** The AIOC (or the old AB13X card) for input; the iMac's own speakers for output (not a USB card). */
 export function defaultInput(list: MediaDeviceInfo[]) {
-  return list.find((d) => has(d, "ab13x", "usb audio")) ?? list.find((d) => d.deviceId === "default") ?? list[0];
+  return (
+    list.find((d) => has(d, "aioc", "all-in-one")) ??
+    list.find((d) => has(d, "ab13x", "usb audio")) ??
+    list.find((d) => d.deviceId === "default") ??
+    list[0]
+  );
 }
 export function defaultOutput(list: MediaDeviceInfo[]) {
   return (

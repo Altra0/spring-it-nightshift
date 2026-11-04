@@ -3,7 +3,7 @@
 // Where Spring It's spoken reply goes. Swapping the speaker for the real radio is a
 // setting, not a code change.
 //
-//  - "speaker": play on the chosen output (the iMac speakers). Used until the AIOC arrives.
+//  - "speaker": play on the chosen output (the iMac speakers), for testing without a radio.
 //  - "aioc":    play on the AIOC's sound card and key the wired radio's PTT through the
 //               AIOC's serial port, the same DTR=1 / RTS=0 rule as radio/bridge.py (PR #1),
 //               done here with Web Serial (Chrome / Edge). Running bridge.py instead is the
@@ -16,17 +16,24 @@ export const TRANSMIT_LABEL: Record<TransmitMode, string> = {
   aioc: "Radio via AIOC",
 };
 
+// Reply level into the radio's mic: radio/bridge.py's output_gain, which sounded right on
+// the hand radio over the AIOC (4 Nov). That was on speech levelled to a -3 dB peak, so
+// adjust here if the TTS here comes out much louder or quieter.
+export const AIOC_VOLUME = 0.85;
+
 export interface Transmitter {
   mode: TransmitMode;
   /** Output device id the reply audio plays on ("" = system default). */
   sinkId: string;
+  /** Playback volume, 0 to 1. */
+  volume: number;
   /** Key up before audio starts; resolves once the radio is transmitting. */
   keyUp(): Promise<void>;
   keyDown(): Promise<void>;
 }
 
 export function speakerTransmitter(sinkId: string): Transmitter {
-  return { mode: "speaker", sinkId, keyUp: async () => {}, keyDown: async () => {} };
+  return { mode: "speaker", sinkId, volume: 1, keyUp: async () => {}, keyDown: async () => {} };
 }
 
 // Minimal Web Serial types (not in TypeScript's DOM lib yet).
@@ -77,6 +84,7 @@ export function aiocTransmitter(sinkId: string): Transmitter {
   return {
     mode: "aioc",
     sinkId,
+    volume: AIOC_VOLUME,
     async keyUp() {
       if (!port) throw new Error("AIOC not connected");
       await port.setSignals({ dataTerminalReady: true, requestToSend: false });

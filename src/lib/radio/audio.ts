@@ -77,7 +77,7 @@ export function wav(samples: Float32Array, rate: number) {
   return new Blob([buf], { type: "audio/wav" });
 }
 
-/** The short two-tone beep before every reply. Leading silence gives VOX time to key. */
+/** The short two-tone beep before every reply. Leading silence lets the radio settle after PTT keys it. */
 export function beep(leadMs = 0) {
   const rate = 24000;
   const lead = Math.round((leadMs / 1000) * rate);
