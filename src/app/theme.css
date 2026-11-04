@@ -1,0 +1,96 @@
+/* Spring It design tokens: the one place colours, type and radii live.
+   shadcn/ui components read the semantic variables below. */
+:root {
+  /* Brand */
+  --si-neutral: #42556b;
+  --si-text: #0e2538;
+  --si-page: #f3f7f9;
+  --si-red: #db3330;
+  --si-marker: #e1d2b7;
+  --si-card: #ffffff;
+  --si-muted-text: #6b7a8a;
+  /* Grey "was …" lines: a step darker than muted text so they still read. */
+  --si-was: #4f6175;
+  --si-line: #e3e9ee;
+  --si-tint: #e8eef3;
+  --si-amber: #b7791f;
+  --si-green: #2f7d5b;
+
+  /* shadcn semantic tokens */
+  --radius: 1rem;
+  --background: var(--si-page);
+  --foreground: var(--si-text);
+  --card: var(--si-card);
+  --card-foreground: var(--si-text);
+  --popover: var(--si-card);
+  --popover-foreground: var(--si-text);
+  --primary: var(--si-neutral);
+  --primary-foreground: #ffffff;
+  --secondary: var(--si-tint);
+  --secondary-foreground: var(--si-text);
+  --muted: var(--si-tint);
+  --muted-foreground: var(--si-muted-text);
+  --accent: var(--si-tint);
+  --accent-foreground: var(--si-text);
+  --destructive: var(--si-red);
+  --border: var(--si-line);
+  --input: #d5dee5;
+  --ring: var(--si-neutral);
+
+  --sidebar: var(--si-page);
+  --sidebar-foreground: var(--si-text);
+  --sidebar-primary: var(--si-neutral);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--si-card);
+  --sidebar-accent-foreground: var(--si-text);
+  --sidebar-border: transparent;
+  --sidebar-ring: var(--si-neutral);
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-si-neutral: var(--si-neutral);
+  --color-si-text: var(--si-text);
+  --color-si-page: var(--si-page);
+  --color-si-red: var(--si-red);
+  --color-si-marker: var(--si-marker);
+  --color-si-tint: var(--si-tint);
+  --color-si-was: var(--si-was);
+  --color-si-amber: var(--si-amber);
+  --color-si-green: var(--si-green);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 6px);
+  --radius-lg: calc(var(--radius) - 4px);
+  --radius-xl: var(--radius);
+  --radius-2xl: calc(var(--radius) + 4px);
+}

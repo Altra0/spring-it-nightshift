@@ -1,0 +1,76 @@
+"use client";
+
+// Where Spring It's spoken reply goes. Swapping the speaker for the real radio is a
+// setting, not a code change.
+//
+//  - "speaker": play on the chosen output (the iMac speakers). Used until the AIOC arrives.
+//  - "aioc":    play on the AIOC's sound card and key the wired radio's PTT through the
+//               AIOC's serial port, the same DTR=1 / RTS=0 rule as radio/bridge.py (PR #1),
+//               done here with Web Serial (Chrome / Edge). Running bridge.py instead is the
+//               other way to drive the AIOC; it uses the same keying.
+
+export type TransmitMode = "speaker" | "aioc";
+
+export const TRANSMIT_LABEL: Record<TransmitMode, string> = {
+  speaker: "Speaker",
+  aioc: "Radio via AIOC",
+};
+
+export interface Transmitter {
+  mode: TransmitMode;
+  /** Output device id the reply audio plays on ("" = system default). */
+  sinkId: string;
+  /** Key up before audio starts; resolves once the radio is transmitting. */
+  keyUp(): Promise<void>;
+  keyDown(): Promise<void>;
+}
+
+export function speakerTransmitter(sinkId: string): Transmitter {
+  return { mode: "speaker", sinkId, keyUp: async () => {}, keyDown: async () => {} };
+}
+
+// Minimal Web Serial types (not in TypeScript's DOM lib yet).
+type SerialPortLike = {
+  open(o: { baudRate: number }): Promise<void>;
+  setSignals(s: { dataTerminalReady?: boolean; requestToSend?: boolean }): Promise<void>;
+  close(): Promise<void>;
+};
+type SerialLike = { requestPort(): Promise<SerialPortLike>; getPorts(): Promise<SerialPortLike[]> };
+const serial = () => (navigator as unknown as { serial?: SerialLike }).serial;
+
+export const webSerialSupported = () => typeof navigator !== "undefined" && !!serial();
+
+let port: SerialPortLike | null = null;
+
+/** Ask for the AIOC's serial port (needs a click). Reuses a port granted earlier. */
+export async function connectAioc(prompt = true) {
+  const s = serial();
+  if (!s) throw new Error("This browser can't key the radio. Use Chrome or Edge, or run radio/bridge.py.");
+  if (port) return true;
+  const granted = (await s.getPorts())[0] ?? (prompt ? await s.requestPort() : null);
+  if (!granted) return false;
+  await granted.open({ baudRate: 9600 });
+  await granted.setSignals({ dataTerminalReady: false, requestToSend: false });
+  port = granted;
+  return true;
+}
+
+export const aiocConnected = () => !!port;
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export function aiocTransmitter(sinkId: string): Transmitter {
+  return {
+    mode: "aioc",
+    sinkId,
+    async keyUp() {
+      if (!port) throw new Error("AIOC not connected");
+      await port.setSignals({ dataTerminalReady: true, requestToSend: false });
+      await wait(250); // radio needs a moment before audio, or the first word is clipped
+    },
+    async keyDown() {
+      await wait(150);
+      await port?.setSignals({ dataTerminalReady: false, requestToSend: false });
+    },
+  };
+}
