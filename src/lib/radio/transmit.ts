@@ -3,11 +3,11 @@
 // Where Spring It's spoken reply goes. Swapping the speaker for the real radio is a
 // setting, not a code change.
 //
-//  - "speaker": play on the chosen output (the iMac speakers). Used until the AIOC arrives.
+//  - "speaker": play on the chosen output (the iMac speakers). For testing without a radio.
 //  - "aioc":    play on the AIOC's sound card and key the wired radio's PTT through the
-//               AIOC's serial port, the same DTR=1 / RTS=0 rule as radio/bridge.py (PR #1),
-//               done here with Web Serial (Chrome / Edge). Running bridge.py instead is the
-//               other way to drive the AIOC; it uses the same keying.
+//               AIOC's serial port, the same DTR=1 / RTS=0 rule and timing as radio/bridge.py,
+//               done here with Web Serial (Chrome / Edge). Run either this page or bridge.py,
+//               not both: only one of them can hold the AIOC's serial port.
 
 export type TransmitMode = "speaker" | "aioc";
 
@@ -80,10 +80,10 @@ export function aiocTransmitter(sinkId: string): Transmitter {
     async keyUp() {
       if (!port) throw new Error("AIOC not connected");
       await port.setSignals({ dataTerminalReady: true, requestToSend: false });
-      await wait(250); // radio needs a moment before audio, or the first word is clipped
+      await wait(300); // radio needs a moment before audio, or the first word is clipped (bridge.py key_up_delay)
     },
     async keyDown() {
-      await wait(150);
+      await wait(300); // let the last word clear the radio before unkeying (bridge.py tail)
       await port?.setSignals({ dataTerminalReady: false, requestToSend: false });
     },
   };
