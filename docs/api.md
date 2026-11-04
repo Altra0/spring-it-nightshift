@@ -99,13 +99,15 @@ and the fact that replaced it is deleted. Same production guard as reset.
 
 ## Radio page (Stream C)
 
-Speech goes straight to OpenAI with `OPENAI_API_KEY`, server side. It never goes
+Speech goes straight to the providers, server side: ElevenLabs (`ELEVENLABS_API_KEY`)
+for transcription, OpenAI (`OPENAI_API_KEY`) for the spoken reply. It never goes
 through Mubit, so it never touches the classifier's training task.
 
 ### `POST /api/transcribe`
 `multipart/form-data` with `audio` (16 kHz mono WAV from the radio page; mp3/webm also accepted, max 10 MB)
 
--> `{ text: string }` (`gpt-4o-transcribe`, English, building vocabulary hint). 503 when no key.
+-> `{ text: string }` (ElevenLabs `scribe_v2`, English, audio-event tags off). Falls back to
+OpenAI `gpt-4o-transcribe` when `ELEVENLABS_API_KEY` is not set. 503 when neither key is set.
 
 ### `POST /api/speak`
 `{ text: string }` (max 600 chars) -> `audio/mpeg` (`gpt-4o-mini-tts`, voice `ash`). 503 when no key,
