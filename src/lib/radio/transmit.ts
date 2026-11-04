@@ -34,6 +34,7 @@ type SerialPortLike = {
   open(o: { baudRate: number }): Promise<void>;
   setSignals(s: { dataTerminalReady?: boolean; requestToSend?: boolean }): Promise<void>;
   close(): Promise<void>;
+  readable: unknown; // non-null while this page has the port open
 };
 type SerialLike = { requestPort(): Promise<SerialPortLike>; getPorts(): Promise<SerialPortLike[]> };
 const serial = () => (navigator as unknown as { serial?: SerialLike }).serial;
@@ -49,7 +50,20 @@ export async function connectAioc(prompt = true) {
   if (port) return true;
   const granted = (await s.getPorts())[0] ?? (prompt ? await s.requestPort() : null);
   if (!granted) return false;
-  await granted.open({ baudRate: 9600 });
+  // After a hot reload or a remount this page may still hold the port open. Reuse it:
+  // calling open() again would fail.
+  if (!granted.readable) {
+    try {
+      await granted.open({ baudRate: 9600 });
+    } catch (err) {
+      throw new Error(
+        "The AIOC's serial port is busy. Close any other tab that has the radio page open " +
+          `(or anything else using the AIOC), then try again. (${err instanceof Error ? err.message : err})`,
+      );
+    }
+    // Let go of the port when the tab closes or reloads, so the next load can open it.
+    window.addEventListener("pagehide", () => void granted.close().catch(() => {}), { once: true });
+  }
   await granted.setSignals({ dataTerminalReady: false, requestToSend: false });
   port = granted;
   return true;
