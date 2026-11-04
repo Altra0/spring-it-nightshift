@@ -1,2 +1,5 @@
 __pycache__/
 radio_rx_test.wav
+radio_report_*.wav
+radio_timeline.*
+radio_monitor_log.csv
